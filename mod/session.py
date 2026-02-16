@@ -10,12 +10,13 @@ from tornado.ioloop import IOLoop, PeriodicCallback
 
 from mod import safe_json_load, TextFileFlusher
 from mod.development import FakeHost, FakeHMI
-from mod.hmi import HMI
+from mod.hmi import HMI, TcpHMI
 from mod.recorder import Recorder, Player
 from mod.screenshot import ScreenshotGenerator
 from mod.settings import (LOG,
                           DEV_ENVIRONMENT, DEV_HMI, DEV_HOST,
                           HMI_SERIAL_PORT, HMI_BAUD_RATE, HMI_TIMEOUT,
+                          HMI_TRANSPORT, HMI_TCP_HOST, HMI_TCP_PORT,
                           PREFERENCES_JSON_FILE, DEFAULT_SNAPSHOT_NAME, UNTITLED_PEDALBOARD_NAME)
 
 if DEV_HOST:
@@ -80,10 +81,12 @@ class Session(object):
         hmiOpened = False
 
         if not DEV_HMI:
-            self.hmi  = HMI(HMI_SERIAL_PORT, HMI_BAUD_RATE, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
-            hmiOpened = self.hmi.sp is not None
-
-        #print("Using HMI =>", hmiOpened)
+            if HMI_TRANSPORT == 'tcp':
+                self.hmi = TcpHMI(HMI_TCP_HOST, HMI_TCP_PORT, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
+                hmiOpened = True  # TCP connection is async, assume it will connect
+            else:
+                self.hmi = HMI(HMI_SERIAL_PORT, HMI_BAUD_RATE, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
+                hmiOpened = self.hmi.sp is not None
 
         if not hmiOpened:
             self.hmi = FakeHMI(self.hmi_initialized_cb)
@@ -138,15 +141,21 @@ class Session(object):
 
     # This is very nasty, sorry
     def hmi_reinit_cb(self):
-        if not os.path.exists("/usr/bin/hmi-reset"):
-            return
         # stop websockets
         self.hmi.initialized = False
         self.signal_disconnect()
-        # restart hmi
-        os.system("/usr/bin/hmi-reset; /usr/bin/sleep 3")
-        # reconnect to newly started hmi
-        self.hmi = HMI(HMI_SERIAL_PORT, HMI_BAUD_RATE, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
+
+        if HMI_TRANSPORT == 'tcp':
+            # reconnect via TCP
+            self.hmi = TcpHMI(HMI_TCP_HOST, HMI_TCP_PORT, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
+        else:
+            if not os.path.exists("/usr/bin/hmi-reset"):
+                return
+            # restart hmi
+            os.system("/usr/bin/hmi-reset; /usr/bin/sleep 3")
+            # reconnect to newly started hmi
+            self.hmi = HMI(HMI_SERIAL_PORT, HMI_BAUD_RATE, HMI_TIMEOUT, self.hmi_initialized_cb, self.hmi_reinit_cb)
+
         self.host.reconnect_hmi(self.hmi)
 
     # -----------------------------------------------------------------------------------------------------------------

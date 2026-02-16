@@ -56,6 +56,9 @@ LV2_FACTORY_PEDALBOARDS_DIR = os.environ.get('MOD_FACTORY_PEDALBOARDS_DIR', "/us
 HMI_BAUD_RATE = os.environ.get('MOD_HMI_BAUD_RATE', 10000000)
 HMI_SERIAL_PORT = os.environ.get('MOD_HMI_SERIAL_PORT', "/dev/ttyUSB0")
 HMI_TIMEOUT = int(os.environ.get('MOD_HMI_TIMEOUT', 0))
+HMI_TRANSPORT = os.environ.get('MOD_HMI_TRANSPORT', 'serial')  # 'serial' or 'tcp'
+HMI_TCP_HOST = os.environ.get('MOD_HMI_TCP_HOST', '127.0.0.1')
+HMI_TCP_PORT = int(os.environ.get('MOD_HMI_TCP_PORT', 5000))
 
 MODEL_CPU = os.environ.get('MOD_MODEL_CPU', None)
 MODEL_TYPE = os.environ.get('MOD_MODEL_TYPE', None)

@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 from datetime import timedelta
-from tornado.iostream import BaseIOStream, StreamClosedError
+from tornado.iostream import BaseIOStream, IOStream, StreamClosedError
 from tornado.ioloop import IOLoop
+from tornado.tcpclient import TCPClient
 from unicodedata import normalize
 
 from mod import get_hardware_actuators, get_hardware_descriptor, get_nearest_valid_scalepoint_value, normalize_for_hw
@@ -549,3 +550,165 @@ class HMI(object):
 
     def set_tuner_ref_freq(self, freq, callback, datatype='int'):
         self.send('{} {}'.format(CMD_TUNER_REF_FREQ, freq), callback, datatype)
+
+
+class TcpHMI(HMI):
+    def __init__(self, host, port, timeout, init_cb, reinit_cb):
+        self.tcp_host = host
+        self.tcp_port = port
+        self.sp = None
+        self.port = None
+        self.baud_rate = None
+        self.queue = []
+        self.queue_idle = True
+        self.initialized = False
+        self.connected = False
+        self.handling_response = False
+        self.need_flush = 0
+        self.flush_io = None
+        self.last_write_time = 0
+        self.timeout = timeout
+        self.reinit_cb = reinit_cb
+        self.hw_desc = get_hardware_descriptor()
+        hw_actuators = self.hw_desc.get('actuators', [])
+        self.hw_ids = [actuator['id'] for actuator in hw_actuators]
+        self.bpm = None
+        self.init(init_cb)
+
+    def init(self, callback):
+        ioloop = IOLoop.instance()
+        self.ping_io = None
+
+        def on_connect(stream):
+            self.sp = stream
+            self.sp.set_nodelay(True)
+
+            def clear_callback(ok):
+                callback()
+
+            def ping_callback(ok):
+                if self.ping_io is not None:
+                    ioloop.remove_timeout(self.ping_io)
+                    self.ping_io = None
+
+                if ok:
+                    self.clear(clear_callback)
+                else:
+                    ioloop.call_later(1, call_ping)
+
+            def call_ping():
+                self.queue = []
+                self.queue_idle = True
+                self.ping(ping_callback)
+                self.ping_io = ioloop.call_later(1, call_ping)
+
+            call_ping()
+            self.checker()
+
+        def on_connect_error(error):
+            logging.error("[hmi] TCP connection failed: %s, retrying...", error)
+            ioloop.call_later(1, try_connect)
+
+        def try_connect():
+            client = TCPClient()
+            future = client.connect(self.tcp_host, self.tcp_port)
+            ioloop.add_future(future, lambda f: handle_future(f))
+
+        def handle_future(future):
+            try:
+                stream = future.result()
+                on_connect(stream)
+            except Exception as e:
+                on_connect_error(e)
+
+        try_connect()
+
+    def checker(self, data=None):
+        ioloop = IOLoop.instance()
+
+        if data is not None and data != b'\0':
+            self.last_write_time = 0
+            try:
+                msg = Protocol(data.decode("utf-8", errors="ignore"))
+            except ProtocolError as e:
+                logging.error('[hmi] error parsing msg %s', data)
+                logging.error('[hmi]   error code %s', e.error_code())
+                self.reply_protocol_error(e.error_code())
+            else:
+                self.need_flush = 0
+                if self.flush_io is not None:
+                    ioloop.remove_timeout(self.flush_io)
+                    self.flush_io = None
+
+                if msg.is_resp():
+                    try:
+                        original_msg, callback, datatype = self.queue.pop(0)
+                        withlog = LOG >= 2 or (LOG and original_msg not in ("pi",))
+                        if withlog:
+                            logging.debug('[hmi] received response <- %s', data)
+                            logging.debug("[hmi] popped from queue: %s | %s",
+                                          original_msg, cmd_to_str(original_msg.split(" ",1)[0]))
+                    except IndexError:
+                        logging.error("[hmi] NOT SYNCED after receiving %s", data)
+                    else:
+                        if callback is not None:
+                            if withlog:
+                                logging.debug("[hmi] calling callback for %s", original_msg)
+                            callback(msg.process_resp(datatype))
+                        self.process_queue()
+                else:
+                    def _callback(resp, resp_args=None):
+                        if not isinstance(resp, int):
+                            resp = 0 if resp else -1
+                        if resp_args is None:
+                            self.send_reply("%s %d" % (CMD_RESPONSE, resp))
+                            logging.debug('[hmi]     sent "%s %d"', CMD_RESPONSE, resp)
+                        else:
+                            self.send_reply("%s %d %s" % (CMD_RESPONSE, resp, resp_args))
+                            logging.debug('[hmi]     sent "%s %d %s"', CMD_RESPONSE, resp, resp_args)
+
+                        self.handling_response = False
+                        if self.queue_idle:
+                            self.process_queue()
+
+                    if LOG >= 1:
+                        logging.debug('[hmi] received <- %s | %s', data,
+                                      cmd_to_str((data.split(b' ',1)[0] if b' ' in data else data[:-1]).decode("utf-8", errors="ignore")))
+
+                    self.handling_response = True
+                    msg.run_cmd(_callback)
+
+        if self.need_flush != 0:
+            if self.flush_io is not None:
+                ioloop.remove_timeout(self.flush_io)
+            self.flush_io = ioloop.call_later(self.timeout/2, self.flush)
+
+        try:
+            self.sp.read_until(b'\0', self.checker)
+        except StreamClosedError as e:
+            logging.error("[hmi] TCP stream closed: %s", e)
+
+    def flush(self, forced=False):
+        prev_queue = self.need_flush
+        self.need_flush = 0
+
+        if len(self.queue) < max(5, prev_queue) and not forced:
+            logging.debug("[hmi] flushing ignored")
+            return
+
+        logging.warning("[hmi] flushing queue as workaround now: %d in queue", len(self.queue))
+        if self.sp is not None:
+            self.sp.close()
+            self.sp = None
+
+        while len(self.queue) > 1:
+            msg, callback, datatype = self.queue.pop(0)
+
+            if any(msg.startswith(resp) for resp in Protocol.RESPONSES):
+                if callback is not None:
+                    callback(process_resp(None, datatype))
+            else:
+                if callback is not None:
+                    callback("-1003")
+
+        self.reinit_cb()
