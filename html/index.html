@@ -193,6 +193,11 @@ $('document').ready(function() {
     }
     desktop.pedalboardBox.pedalboardBox('initViewMode', PREFERENCES['pb-view-mode'])
 
+    // Apply background preference
+    if (PREFERENCES['background'] && PREFERENCES['background'] !== 'default') {
+        $('body').addClass('bg-' + PREFERENCES['background'])
+    }
+
     if ({{using_desktop}}) {
         desktop.setupApp()
     } else {

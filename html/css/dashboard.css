@@ -18,6 +18,20 @@
     right: 0;
 }
 
+/* Background variants */
+body.bg-wood #pedalboard-dashboard,
+body.bg-wood #bank-library .mod-banks-drag-item .img,
+body.bg-wood #bank-pedalboards-result .pedalboard .img,
+body.bg-wood #pedalboards-library .pedalboard {
+    background-image: url(../img/background-wood.jpg);
+}
+body.bg-blackdiamond #pedalboard-dashboard,
+body.bg-blackdiamond #bank-library .mod-banks-drag-item .img,
+body.bg-blackdiamond #bank-pedalboards-result .pedalboard .img,
+body.bg-blackdiamond #pedalboards-library .pedalboard {
+    background-image: url(../img/background-blackdiamond.jpg);
+}
+
 #pedalboard-dashboard.dev_api:after {
     content: "DEV API enabled";
     color: #555;

@@ -148,6 +148,13 @@ function bool2str(ok) {
     return ok ? "true" : "false"
 }
 
+function applyBackground(bg) {
+    $('body').removeClass('bg-wood bg-blackdiamond')
+    if (bg && bg !== 'default') {
+        $('body').addClass('bg-' + bg)
+    }
+}
+
 function refresh_sysinfo() {
     $.ajax({
         url: '/system/info',
@@ -702,6 +709,18 @@ $('document').ready(function() {
         config_set("show-labs-plugins", bool2str($(this).prop("checked")))
     })
 
+    // Apply background preference on page load
+    if (PREFERENCES['background']) {
+        $("#prefs-ui-background").val(PREFERENCES['background'])
+        applyBackground(PREFERENCES['background'])
+    }
+
+    $("#prefs-ui-background").change(function () {
+        var bg = $(this).val()
+        config_set("background", bg)
+        applyBackground(bg)
+    })
+
     // ----------------------------------------------------------------------------------------------------------------
     // --- Services
 
@@ -1106,6 +1125,17 @@ $('document').ready(function() {
                         Please note that MOD Labs plugins are community maintained, can be unstable and can cause crashes.
                         If you share a pedalboard containing MOD Labs plugins, it will only be available to users that explicitly accept pedalboards using MOD Labs plugins.
                         Just remember: things can break!
+                    </p>
+                    <label for="prefs-ui-background">
+                        Background:
+                        <select id="prefs-ui-background" autocomplete="off">
+                            <option value="default">Default</option>
+                            <option value="wood">Wood</option>
+                            <option value="blackdiamond">Black Diamond</option>
+                        </select>
+                    </label>
+                    <p>
+                        Choose the background image for the pedalboard area.
                     </p>
                 </form>
 
