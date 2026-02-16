@@ -142,7 +142,7 @@ from mod.tuner import (
 )
 from modtools.utils import (
     charPtrToString,
-    kPedalboardInfoUserOnly, kPedalboardInfoFactoryOnly,
+    kPedalboardInfoUserOnly, kPedalboardInfoFactoryOnly, kPedalboardInfoBoth,
     is_bundle_loaded, add_bundle_to_lilv_world, remove_bundle_from_lilv_world,
     is_plugin_preset_valid, rescan_plugin_presets,
     get_plugin_info, get_plugin_info_essentials, get_pedalboard_info, get_state_port_values,
@@ -4016,6 +4016,31 @@ class Host(object):
         self.send_notmodified("state_save \"{}\"".format(bundlepath), state_saved_cb, datatype='boolean')
 
         return bundlepath, newTitle
+
+    def rename_pedalboard(self, bundlepath, newTitle):
+        if not newTitle or not newTitle.strip():
+            return False, None
+
+        newTitle = newTitle.strip()
+
+        # Check uniqueness (reuse existing function from mod/__init__.py)
+        allTitles = [pb['title'] for pb in get_all_pedalboards(kPedalboardInfoBoth)
+                     if pb['bundle'] != bundlepath]
+        uniqueTitle = get_unique_name(newTitle, allTitles)
+        if uniqueTitle:
+            newTitle = uniqueTitle
+
+        # Get titlesym from bundle path
+        titlesym = os.path.basename(bundlepath).replace('.pedalboard', '')
+
+        # Update TTL file (reuse existing method)
+        self.save_state_mainfile(bundlepath, newTitle, titlesym)
+
+        # Update in-memory if this is the current pedalboard
+        if self.pedalboard_path == bundlepath:
+            self.pedalboard_name = newTitle
+
+        return True, newTitle
 
     def save_state_to_ttl(self, bundlepath, title, titlesym):
         self.save_state_manifest(bundlepath, titlesym)

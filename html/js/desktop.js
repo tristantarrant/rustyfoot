@@ -248,6 +248,26 @@ function Desktop(elements) {
 
     this.titleBox = elements.titleBox
 
+    this.titleBox.click(function () {
+        if (!self.pedalboardEmpty && self.pedalboardBundle) {
+            var currentTitle = self.title
+            var newTitle = prompt('Rename pedalboard:', currentTitle)
+            if (newTitle && newTitle.trim() && newTitle !== currentTitle) {
+                $.ajax({
+                    url: '/pedalboard/rename',
+                    type: 'POST',
+                    data: { bundlepath: self.pedalboardBundle, title: newTitle.trim() },
+                    success: function (resp) {
+                        if (resp.ok) {
+                            self.title = resp.title
+                            self.titleBox.text(resp.title + " - " + self.pedalboardPresetName)
+                        }
+                    }
+                })
+            }
+        }
+    })
+
     this.ParameterSet = function (paramchange) {
         $.ajax({
             url: '/effect/parameter/set/' ,

@@ -230,12 +230,32 @@ JqueryClass('pedalboardBox', {
 
         if (pedalboard.factory || pedalboard.bundle == DEFAULT_PEDALBOARD) {
             rendered.find('.js-remove').hide()
+            rendered.find('.js-rename').hide()
         } else {
             rendered.find('.js-remove').click(function (e) {
                 self.data('remove')(pedalboard, function () {
                     rendered.remove()
                 })
                 e.stopPropagation();
+                return false
+            })
+            rendered.find('.js-rename').click(function (e) {
+                var currentTitle = pedalboard.title
+                var newTitle = prompt('Rename pedalboard:', currentTitle)
+                if (newTitle && newTitle.trim() && newTitle !== currentTitle) {
+                    $.ajax({
+                        url: '/pedalboard/rename',
+                        type: 'POST',
+                        data: { bundlepath: pedalboard.bundle, title: newTitle.trim() },
+                        success: function (resp) {
+                            if (resp.ok) {
+                                pedalboard.title = resp.title
+                                rendered.find('.title').text(resp.title)
+                            }
+                        }
+                    })
+                }
+                e.stopPropagation()
                 return false
             })
         }

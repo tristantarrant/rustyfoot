@@ -92,6 +92,7 @@ body.bg-blackdiamond #pedalboards-library .pedalboard {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 #pedalboard-info .title {

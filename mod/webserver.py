@@ -1520,6 +1520,20 @@ class PedalboardRemove(JsonRequestHandler):
         reset_get_all_pedalboards_cache_with_refresh(kPedalboardInfoUserOnly)
         self.write(True)
 
+class PedalboardRename(JsonRequestHandler):
+    def post(self):
+        bundlepath = os.path.abspath(self.get_argument('bundlepath'))
+        newTitle = self.get_argument('title')
+
+        if not os.path.exists(bundlepath):
+            self.write({'ok': False, 'error': 'Pedalboard not found'})
+            return
+
+        ok, actualTitle = SESSION.web_rename_pedalboard(bundlepath, newTitle)
+        reset_get_all_pedalboards_cache_with_refresh(kPedalboardInfoUserOnly)
+
+        self.write({'ok': ok, 'title': actualTitle})
+
 class PedalboardImage(TimelessStaticFileHandler):
     def initialize(self):
         root = self.get_argument('bundlepath')
@@ -2319,6 +2333,7 @@ application = web.Application(
             (r"/pedalboard/factorycopy/", PedalboardFactoryCopy),
             (r"/pedalboard/info/", PedalboardInfo),
             (r"/pedalboard/remove/", PedalboardRemove),
+            (r"/pedalboard/rename", PedalboardRename),
             (r"/pedalboard/image/(screenshot|thumbnail).png", PedalboardImage),
             (r"/pedalboard/image/generate", PedalboardImageGenerate),
             (r"/pedalboard/image/check", PedalboardImageCheck),

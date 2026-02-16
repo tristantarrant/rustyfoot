@@ -207,6 +207,16 @@ class Session(object):
 
         return bundlepath, newTitle
 
+    # Rename an existing pedalboard
+    # returns (ok, actualTitle)
+    def web_rename_pedalboard(self, bundlepath, newTitle):
+        ok, actualTitle = self.host.rename_pedalboard(bundlepath, newTitle)
+
+        if ok and self.hmi.initialized and self.host.descriptor.get('hmi_set_pb_name', False):
+            self.hmi_set_pb_name(actualTitle)
+
+        return ok, actualTitle
+
     # Get list of Hardware MIDI devices
     # returns (devsInUse, devList, names, midiAggregatedMode)
     def web_get_midi_device_list(self):
