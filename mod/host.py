@@ -66,6 +66,7 @@ from mod.mod_protocol import (
     CMD_CONTROL_GET,
     CMD_CONTROL_SET,
     CMD_CONTROL_PARAM_SET,
+    CMD_FILE_PARAM_SET,
     CMD_CONTROL_PAGE,
     CMD_MENU_ITEM_CHANGE,
     CMD_TUNER_ON,
@@ -511,6 +512,7 @@ class Host(object):
         Protocol.register_cmd_callback('ALL', CMD_CONTROL_GET, self.hmi_parameter_get)
         Protocol.register_cmd_callback('ALL', CMD_CONTROL_SET, self.hmi_parameter_set)
         Protocol.register_cmd_callback('ALL', CMD_CONTROL_PARAM_SET, self.hmi_control_param_set)
+        Protocol.register_cmd_callback('ALL', CMD_FILE_PARAM_SET, self.hmi_file_param_set)
 
         Protocol.register_cmd_callback('ALL', CMD_SCREENSHOT, self.hmi_screenshot)
 
@@ -5859,6 +5861,51 @@ _:b%i
         # Send to audio engine and notify web clients
         self.send_modified("param_set %d %s %f" % (instance_id, portsymbol, value), callback, datatype='boolean')
         self.msg_callback("param_set %s %s %f" % (instance, portsymbol, value))
+
+    def hmi_file_param_set(self, instance, paramuri, path, callback):
+        """Set a plugin file parameter directly by instance name and parameter URI.
+
+        This is used by HMI touchscreen interfaces to load files (samples, IRs,
+        neural models) without hardware addressing.
+
+        Args:
+            instance: Plugin instance name (e.g., "sfizz", "AIDA_X")
+            paramuri: Parameter URI (e.g., "urn:sfizz:sfzfile")
+            path: File path to load
+            callback: Callback function for result
+        """
+        logging.debug("hmi file param set: %s/%s = %s", instance, paramuri, path)
+
+        if self.next_hmi_pedalboard_loading:
+            callback(False)
+            logging.error("hmi_file_param_set, pedalboard loading is in progress")
+            return
+
+        try:
+            instance_id = self.mapper.get_id_without_creating(instance)
+        except Exception as e:
+            logging.error("hmi_file_param_set: instance '%s' not found: %s", instance, e)
+            callback(False)
+            return
+
+        if instance_id not in self.plugins:
+            logging.error("hmi_file_param_set: no plugin data for instance '%s'", instance)
+            callback(False)
+            return
+
+        pluginData = self.plugins[instance_id]
+        parameter = pluginData['parameters'].get(paramuri, None)
+
+        if parameter is not None:
+            parameter[0] = path
+
+        # Send to audio engine
+        self.send_modified("patch_set %d %s \"%s\"" % (instance_id, paramuri, str(path).replace('"','\\"')),
+                          callback, datatype='boolean')
+
+        # Notify web clients
+        if parameter is not None:
+            self.msg_callback("patch_set %s 1 %s %s %s" % (instance, paramuri, parameter[1], path))
 
     def hmi_or_cc_parameter_set(self, instance_id, portsymbol, value, hw_id, callback):
         logging.debug("hmi_or_cc_parameter_set")
