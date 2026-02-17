@@ -17,6 +17,7 @@ CMD_ARGS = {
         'd': [int,],
         'g': [int],
         's': [int,float],
+        'cps': [str,str,float],
         'ncp': [int,int,int],
         'is': [int,int,int,int,int,int,str,str,],
         'b': [int,int],
@@ -128,6 +129,7 @@ CMD_CONTROL_ADD                   = 'a'
 CMD_CONTROL_REMOVE                = 'd'
 CMD_CONTROL_GET                   = 'g'
 CMD_CONTROL_SET                   = 's'
+CMD_CONTROL_PARAM_SET             = 'cps'
 CMD_CONTROL_PAGE                  = 'ncp'
 CMD_INITIAL_STATE                 = 'is'
 CMD_BANKS                         = 'b'
@@ -300,6 +302,8 @@ def cmd_to_str(cmd):
         return "CMD_CONTROL_GET"
     if cmd == "s":
         return "CMD_CONTROL_SET"
+    if cmd == "cps":
+        return "CMD_CONTROL_PARAM_SET"
     if cmd == "ncp":
         return "CMD_CONTROL_PAGE"
     if cmd == "is":

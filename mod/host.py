@@ -65,6 +65,7 @@ from mod.mod_protocol import (
     CMD_SNAPSHOT_DELETE,
     CMD_CONTROL_GET,
     CMD_CONTROL_SET,
+    CMD_CONTROL_PARAM_SET,
     CMD_CONTROL_PAGE,
     CMD_MENU_ITEM_CHANGE,
     CMD_TUNER_ON,
@@ -509,6 +510,7 @@ class Host(object):
 
         Protocol.register_cmd_callback('ALL', CMD_CONTROL_GET, self.hmi_parameter_get)
         Protocol.register_cmd_callback('ALL', CMD_CONTROL_SET, self.hmi_parameter_set)
+        Protocol.register_cmd_callback('ALL', CMD_CONTROL_PARAM_SET, self.hmi_control_param_set)
 
         Protocol.register_cmd_callback('ALL', CMD_SCREENSHOT, self.hmi_screenshot)
 
@@ -5812,6 +5814,51 @@ _:b%i
             return
         instance_id, portsymbol = self.get_addressed_port_info(hw_id)
         self.hmi_or_cc_parameter_set(instance_id, portsymbol, value, hw_id, callback)
+
+    def hmi_control_param_set(self, instance, portsymbol, value, callback):
+        """Set a plugin parameter directly by instance name and port symbol.
+
+        This is used by HMI touchscreen interfaces to set parameters without
+        hardware addressing.
+
+        Args:
+            instance: Plugin instance name (e.g., "Drop", "_flanger")
+            portsymbol: Port symbol name (e.g., "Step", "depth")
+            value: New parameter value (float)
+            callback: Callback function for result
+        """
+        logging.debug("hmi control param set: %s/%s = %f", instance, portsymbol, value)
+
+        if self.next_hmi_pedalboard_loading:
+            callback(False)
+            logging.error("hmi_control_param_set, pedalboard loading is in progress")
+            return
+
+        try:
+            instance_id = self.mapper.get_id_without_creating(instance)
+        except Exception as e:
+            logging.error("hmi_control_param_set: instance '%s' not found: %s", instance, e)
+            callback(False)
+            return
+
+        if instance_id not in self.plugins:
+            logging.error("hmi_control_param_set: no plugin data for instance '%s'", instance)
+            callback(False)
+            return
+
+        pluginData = self.plugins[instance_id]
+
+        if portsymbol in pluginData['designations']:
+            logging.error("hmi_control_param_set: cannot modify designated port '%s'", portsymbol)
+            callback(False)
+            return
+
+        # Update local port value
+        pluginData['ports'][portsymbol] = value
+
+        # Send to audio engine and notify web clients
+        self.send_modified("param_set %d %s %f" % (instance_id, portsymbol, value), callback, datatype='boolean')
+        self.msg_callback("param_set %s %s %f" % (instance, portsymbol, value))
 
     def hmi_or_cc_parameter_set(self, instance_id, portsymbol, value, hw_id, callback):
         logging.debug("hmi_or_cc_parameter_set")
