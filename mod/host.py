@@ -1366,6 +1366,11 @@ class Host(object):
         yield gen.Task(self.send_hmi_boot)
         yield gen.Task(self.initialize_hmi, False)
 
+        # Send file params for currently loaded pedalboard
+        logging.debug("[host] reconnect_hmi: pedalboard_path = %s", self.pedalboard_path)
+        if self.pedalboard_path:
+            self._send_file_params_from_state(self.pedalboard_path)
+
         actuators = [actuator['uri'] for actuator in self.descriptor.get('actuators', [])]
         self.addressings.current_page = 0
         self.addressings.load_current(actuators, (None, None), False, True, abort_catcher)
@@ -1521,6 +1526,10 @@ class Host(object):
                 initial_state_data += ' %s %d' % (normalize_for_hw(pedalboards[i]['title']), i + self.pedalboard_index_offset)
 
         def cb_midi_pb_prgch(_):
+            # Send file params for currently loaded pedalboard
+            if self.pedalboard_path:
+                logging.debug("[host] initialize_hmi: sending file params for %s", self.pedalboard_path)
+                self._send_file_params_from_state(self.pedalboard_path)
             midi_pb_prgch = self.profile.get_midi_prgch_channel("pedalboard")
             if midi_pb_prgch >= 1 and midi_pb_prgch <= 16:
                 self.send_notmodified("monitor_midi_program %d 1" % (midi_pb_prgch-1),
@@ -3684,15 +3693,9 @@ class Host(object):
 
         self.addressings.registerMappings(self.msg_callback, rinstances)
 
-        # Send file parameter values to HMI
-        if self.hmi.initialized:
-            for instance_id, pluginData in self.plugins.items():
-                instance = pluginData['instance']
-                for paramuri, parameter in pluginData.get('parameters', {}).items():
-                    if parameter[1] == 'p':  # 'p' = path type
-                        path = parameter[0]
-                        if path:
-                            self.hmi.send_file_param_current(instance, paramuri, path, None)
+        # Send file parameter values to HMI (read from state files since state_load is async)
+        if self.hmi.initialized and bundlepath:
+            self._send_file_params_from_state(bundlepath)
 
         self.msg_callback("loading_end %d" % self.current_pedalboard_snapshot_id)
 
@@ -3722,6 +3725,53 @@ class Host(object):
             os_sync()
 
         return self.pedalboard_name
+
+    def _send_file_params_from_state(self, bundlepath):
+        """Read file parameters from effect state files and send to HMI."""
+        import re
+        for entry in os.listdir(bundlepath):
+            effect_dir = os.path.join(bundlepath, entry)
+            if not entry.startswith('effect-') or not os.path.isdir(effect_dir):
+                continue
+
+            effect_ttl = os.path.join(effect_dir, 'effect.ttl')
+            manifest_ttl = os.path.join(effect_dir, 'manifest.ttl')
+            if not os.path.exists(effect_ttl) or not os.path.exists(manifest_ttl):
+                continue
+
+            # Read manifest to get plugin URI and find instance
+            try:
+                with open(manifest_ttl, 'r') as f:
+                    manifest_content = f.read()
+                plugin_uri_match = re.search(r'lv2:appliesTo\s+<([^>]+)>', manifest_content)
+                if not plugin_uri_match:
+                    continue
+                plugin_uri = plugin_uri_match.group(1)
+
+                # Find the instance name for this plugin
+                instance = None
+                for inst_id, pluginData in self.plugins.items():
+                    if pluginData.get('uri') == plugin_uri:
+                        instance = pluginData.get('instance')
+                        break
+                if not instance:
+                    continue
+
+                # Read effect.ttl for state values
+                with open(effect_ttl, 'r') as f:
+                    effect_content = f.read()
+
+                # Extract file parameters (paths) from state:state block
+                # Pattern: <param_uri> "path" or <param_uri> "/path/to/file"
+                param_pattern = re.compile(r'<([^>]+)>\s+"([^"]*)"')
+                for match in param_pattern.finditer(effect_content):
+                    param_uri = match.group(1)
+                    path = match.group(2)
+                    if path and path != "None" and ('/' in path or path.endswith(('.nam', '.wav', '.flac', '.sfz', '.sf2', '.aidax', '.json'))):
+                        logging.info("[host] Sending file param to HMI: %s %s %s", instance, param_uri, path)
+                        self.hmi.send_file_param_current(instance, param_uri, path, None)
+            except Exception as e:
+                logging.warning("[host] Error reading state for %s: %s", entry, e)
 
     def load_pb_snapshots(self, bundlepath):
         if os.path.exists(os.path.join(bundlepath, "snapshots.json")):
