@@ -18,6 +18,7 @@ from mod.mod_protocol import (
     CMD_CONTROL_ADD,
     CMD_CONTROL_REMOVE,
     CMD_CONTROL_SET,
+    CMD_FILE_PARAM_CURRENT,
     CMD_PEDALBOARD_CHANGE,
     CMD_PEDALBOARD_CLEAR,
     CMD_PEDALBOARD_NAME_SET,
@@ -544,6 +545,10 @@ class HMI(object):
 
     def set_snapshot_name(self, index, name, callback):
         self.send('{} {} {}'.format(CMD_SNAPSHOT_NAME_SET, index, normalize_for_hw(name)), callback)
+
+    def send_file_param_current(self, instance, paramuri, path, callback):
+        """Send current file parameter value to HMI."""
+        self.send('{} {} {} {}'.format(CMD_FILE_PARAM_CURRENT, instance, paramuri, path), callback)
 
     def set_tuner_input(self, port, callback, datatype='int'):
         self.send('{} {}'.format(CMD_TUNER_INPUT, port), callback, datatype)

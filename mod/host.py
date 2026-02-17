@@ -3684,6 +3684,16 @@ class Host(object):
 
         self.addressings.registerMappings(self.msg_callback, rinstances)
 
+        # Send file parameter values to HMI
+        if self.hmi.initialized:
+            for instance_id, pluginData in self.plugins.items():
+                instance = pluginData['instance']
+                for paramuri, parameter in pluginData.get('parameters', {}).items():
+                    if parameter[1] == 'p':  # 'p' = path type
+                        path = parameter[0]
+                        if path:
+                            self.hmi.send_file_param_current(instance, paramuri, path, None)
+
         self.msg_callback("loading_end %d" % self.current_pedalboard_snapshot_id)
 
         if isDefault:

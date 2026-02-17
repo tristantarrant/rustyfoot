@@ -19,6 +19,7 @@ CMD_ARGS = {
         's': [int,float],
         'cps': [str,str,float],
         'fps': [str,str,str],
+        'fpc': [str,str,str],
         'ncp': [int,int,int],
         'is': [int,int,int,int,int,int,str,str,],
         'b': [int,int],
@@ -132,6 +133,7 @@ CMD_CONTROL_GET                   = 'g'
 CMD_CONTROL_SET                   = 's'
 CMD_CONTROL_PARAM_SET             = 'cps'
 CMD_FILE_PARAM_SET                = 'fps'
+CMD_FILE_PARAM_CURRENT            = 'fpc'
 CMD_CONTROL_PAGE                  = 'ncp'
 CMD_INITIAL_STATE                 = 'is'
 CMD_BANKS                         = 'b'
@@ -308,6 +310,8 @@ def cmd_to_str(cmd):
         return "CMD_CONTROL_PARAM_SET"
     if cmd == "fps":
         return "CMD_FILE_PARAM_SET"
+    if cmd == "fpc":
+        return "CMD_FILE_PARAM_CURRENT"
     if cmd == "ncp":
         return "CMD_CONTROL_PAGE"
     if cmd == "is":
