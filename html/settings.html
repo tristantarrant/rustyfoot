@@ -149,7 +149,7 @@ function bool2str(ok) {
 }
 
 function applyBackground(bg) {
-    $('body').removeClass('bg-wood bg-blackdiamond')
+    $('body').removeClass('bg-wood bg-blackdiamond bg-tweed')
     if (bg && bg !== 'default') {
         $('body').addClass('bg-' + bg)
     }
@@ -1132,6 +1132,7 @@ $('document').ready(function() {
                             <option value="default">Default</option>
                             <option value="wood">Wood</option>
                             <option value="blackdiamond">Black Diamond</option>
+                            <option value="tweed">Tweed</option>
                         </select>
                     </label>
                     <p>
