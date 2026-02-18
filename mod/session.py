@@ -93,6 +93,12 @@ class Session(object):
             print("Using FakeHMI =>", self.hmi)
 
         self.host = Host(self.hmi, self.prefs, self.msg_callback)
+        self.host.on_pedalboard_saved = self._on_pedalboard_saved
+
+    def _on_pedalboard_saved(self, bundlepath):
+        if bundlepath and self.screenshot_needed:
+            self.screenshot_needed = False
+            self.screenshot_generator.schedule_screenshot(bundlepath)
 
     def signal_save(self):
         # reuse HMI function

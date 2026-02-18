@@ -317,6 +317,7 @@ class Host(object):
         self.hmi = hmi
         self.prefs = prefs
         self.msg_callback = msg_callback
+        self.on_pedalboard_saved = None
 
         self.addr = ("localhost", DEVICE_HOST_PORT)
         self.readsock = None
@@ -5515,6 +5516,8 @@ _:b%i
             return
 
         def rcallback(ok, bundlepath, newTitle):
+            if self.on_pedalboard_saved is not None:
+                self.on_pedalboard_saved(bundlepath)
             callback(ok)
             return
 
@@ -6359,8 +6362,12 @@ _:b%i
             callback(True)
             return
 
+        bundlepath = self.pedalboard_path
+
         def host_callback(ok):
             os_sync()
+            if self.on_pedalboard_saved is not None:
+                self.on_pedalboard_saved(bundlepath)
             callback(True)
 
         logging.debug("hmi save current pedalboard")
