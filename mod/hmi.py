@@ -286,6 +286,8 @@ class HMI(object):
             except StreamClosedError as e:
                 logging.exception(e)
                 self.sp = None
+                self.reinit_cb()
+                return
 
             self.queue_idle = False
             self.last_write_time = time.time()
@@ -587,6 +589,7 @@ class TcpHMI(HMI):
         def on_connect(stream):
             self.sp = stream
             self.sp.set_nodelay(True)
+            self.sp.set_close_callback(self._on_stream_closed)
 
             def clear_callback(ok):
                 callback()
@@ -692,6 +695,14 @@ class TcpHMI(HMI):
             self.sp.read_until(b'\0', self.checker)
         except StreamClosedError as e:
             logging.error("[hmi] TCP stream closed: %s", e)
+            self.sp = None
+            self.reinit_cb()
+
+    def _on_stream_closed(self):
+        if self.sp is not None:
+            logging.error("[hmi] TCP connection lost, reconnecting...")
+            self.sp = None
+            self.reinit_cb()
 
     def flush(self, forced=False):
         prev_queue = self.need_flush
