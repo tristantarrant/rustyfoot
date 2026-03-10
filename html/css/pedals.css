@@ -1,0 +1,1054 @@
+/* GENERAL PEDAL STYLE */
+
+.mod-pedal {
+    display:inline-block;
+/*
+    padding:1px 15px 1px 15px;
+*/
+    z-index:100;
+}
+#pedalboard-dashboard > .mod-pedal > div:first-child:not(.mod-no-shadow) {
+    box-shadow:  2px  8px  7px rgba(0,0,0,0.2),
+                 4px 16px  7px rgba(0,0,0,0.2),
+                 6px 24px  7px rgba(0,0,0,0.2),
+                 8px 32px  7px rgba(0,0,0,0.2),
+                10px 40px  7px rgba(0,0,0,0.2),
+                 5px 20px 50px rgba(0,0,0,0.9),
+                 4px 12px 30px rgba(0,0,0,0.5);
+}
+.mod-input .mod-output-jack {
+    z-index: 100;
+}
+
+.mod-input.input-connected.expanded {
+  z-index: 101;
+}
+
+/* = ACTIONS - Icons above: settings, remove, etc
+================================================ */
+.mod-pedal .mod-actions {
+    position:absolute;
+    right:0;
+    top: -1.5em;
+    font-size: 3em;
+}
+.mod-pedal .mod-actions .mod-settings {
+    font-family: fontello !important;
+    cursor: pointer;
+    position: absolute;
+    width: 32px;
+    right: 1.5em;
+    color: #666;
+    transition: color 0.33s;
+}
+.mod-settings:after {
+    content: '\e802';
+}
+.mod-pedal .mod-actions .mod-settings:hover { color: #eee;}
+.mod-pedal .mod-actions .mod-remove {
+    font-family: fontello !important;
+    cursor: pointer;
+    position: absolute;
+    width: 32px;
+    right: 0em;
+    color: #666;
+    transition: color 0.33s;
+}
+.mod-remove:after {
+    content: '\e803';
+}
+.mod-pedal .mod-actions .mod-remove:hover { color: #eee; }
+.mod-pedal .mod-actions .mod-information {
+    font-family: fontello !important;
+    cursor: pointer;
+    position: absolute;
+    width: 32px;
+    right: 3em;
+    color: #666;
+    transition: color 0.33s;
+}
+.mod-information:after {
+    content: '\e808';
+}
+.mod-pedal .mod-actions .mod-information:hover { color: #eee; }
+
+.mod-pedal .mod-actions .mod-external-ui {
+    font-family: fontello !important;
+    cursor: pointer;
+    position: absolute;
+    width: 32px;
+    right: 4.5em;
+    color: #666;
+    transition: color 0.33s;
+}
+.mod-external-ui:after {
+    content: '\e800';
+}
+.mod-pedal .mod-actions .mod-external-ui:hover { color: #eee; }
+
+/* = DRAG HANDLE
+================================================ */
+.mod-pedal .mod-drag-handle {
+    bottom:0;
+    cursor:move;
+    left:0;
+    position:absolute;
+    right:0;
+    top:0px;
+    z-index:20;
+}
+
+/* = AUTHOR AND PLUGIN'S NAME
+================================================ */
+.mod-pedal .mod-plugin-author,
+.mod-pedal .mod-plugin-brand,
+.mod-pedal .mod-plugin-title {
+    z-index:10;
+}
+
+/* = FOOTSWITCH
+================================================ */
+.mod-pedal .mod-footswitch {
+    z-index:20;
+}
+
+/* = CONTROLS
+================================================ */
+.mod-pedal .mod-control-group {
+    z-index:20;
+}
+
+/* = INPUT/OUTPUT
+================================================ */
+.mod-pedal .mod-pedal-input,
+.mod-pedal .mod-pedal-output {
+    z-index:30;
+}
+
+
+/* = LIGHT ON/OFF
+================================================ */
+.mod-pedal .mod-light.off { background-image:url(../img/red-light-off.png); }
+.mod-pedal .mod-light.on  { background-image:url(../img/red-light-on.png); }
+
+
+/* = INPUT
+================================================ */
+.mod-pedal-input-wrapper {
+    background: rgba(0, 0, 0, 0.5);
+    height:100px;
+    position:relative;
+    z-index:35;
+    padding: 0 10px;
+    border-radius:20px;
+}
+
+.mod-pedal .mod-pedal-input {
+    position: absolute;
+    top: 106px;
+    left: -88px;
+    width: 88px;
+}
+.mod-pedal .mod-pedal-input .mod-audio-input,
+.mod-pedal .mod-pedal-input .mod-midi-input,
+.mod-pedal .mod-pedal-input .mod-cv-input {
+    position: relative;
+    margin-bottom: 13px;
+}
+.mod-pedal .mod-pedal-input .mod-midi-input {
+    right: -12px;
+}
+.mod-pedal .mod-pedal-input .mod-cv-input {
+    right: -8px;
+}
+.mod-input.expanded .mod-output-jack {
+    height: 40px;
+}
+.mod-audio-input.expanded .mod-output-jack {
+    background-image:url(../img/audio-jack.png) !important;
+}
+.mod-midi-input.expanded .mod-output-jack {
+    background-image:url(../img/midi-jack.png) !important;
+}
+.mod-cv-input.expanded .mod-output-jack {
+    background-image:url(../img/cv-jack.png) !important;
+}
+
+/* = OUTPUT
+================================================ */
+.mod-pedal-output-wrapper {
+    background:#000;
+    border-radius:4px;
+    height:100px;
+    right:-32px;
+    position:absolute;
+    top:78px;
+    width:32px;
+    z-index:50;
+}
+
+.mod-pedal-output-wrapper .mod-pedal-output-arrow {
+    border-bottom:12px solid transparent;
+    border-right:12px solid #000;
+    border-top:12px solid transparent;
+    height:0;
+    position:absolute;
+    left:-12px;
+    top:39px;
+    width:0;
+}
+.mod-pedal .mod-pedal-output {
+    position: absolute;
+    top: 106px;
+    right: -87px;
+    width: 87px;
+}
+.mod-pedal .mod-pedal-output .mod-audio-output,
+.mod-pedal .mod-pedal-output .mod-midi-output,
+.mod-pedal .mod-pedal-output .mod-cv-output {
+    position: relative;
+    margin-bottom: 13px;
+}
+
+/* = PEDAL SETTINGS - Pop Up Window
+================================================ */
+body > .mod-settings {
+    background:rgba(17, 17, 17, 0.9);
+    bottom:0;
+    left:0;
+    position:absolute;
+    right:0;
+    top:0;
+/*
+    transition-property: display, transform;
+    transition-duration: 0.5s, 0.33s;
+    transition-delay: 0.5s, 0s;
+    transform: translateY(-100%);
+*/
+}
+
+body > .mod-settings.mod-window-visible {
+/*
+    transition-delay: 0s, 0s;
+    transform: translateY(0%);
+*/
+}
+
+.mod-pedal-settings {
+    bottom:38px;
+    color:#fff;
+    left:30px;
+    margin:0 auto;
+    overflow:auto;
+    padding:0;
+    position:absolute;
+    right:30px;
+    top:38px;
+    z-index:10;
+}
+
+.mod-pedal-settings header {
+    padding:10px 10px 18px;
+}
+
+.mod-pedal-settings h1 {
+    font-size:24px;
+    font-weight:normal;
+    margin:0;
+}
+
+.mod-pedal-settings .mod-actions {
+    border-color:#2b2b2b;
+    border-style:dotted;
+    border-width:1px 0 0 0;
+    margin:18px;
+    padding:18px 0 0 0;
+    text-align:right;
+}
+
+.mod-pedal-settings .mod-control-group {
+    margin:0;
+    padding:0 18px;
+}
+
+/* PRESETS */
+
+.mod-presets {
+    margin:0;
+}
+.mod-presets span.mod-enumerated-title {
+    overflow: initial !important;
+}
+.mod-presets input[type="radio"] {
+    vertical-align: middle;
+}
+.mod-presets>div.mod-enumerated-list {
+    width: 100% ;
+    padding-left: 0;
+}
+.mod-presets select {
+    color: #000;
+    background-color: #FFFFFE; /* forces mod-remote to use custom combo-box bg */
+}
+.mod-presets footer{
+    width: 100%;
+    position: absolute;
+    left: 0;
+    padding: 4px 10px;
+}
+.mod-presets .btn {
+    font-size: 10px;
+    border-radius: 0px;
+    margin: 0;
+    min-height: 29px;
+    min-width: 29px;
+    font-weight: bold;
+    clear: both;
+    background-color: black;
+    background-repeat: no-repeat;
+    background-position: center center;
+    text-transform: uppercase !important;
+}
+.mod-presets .btn.preset-btn-save {
+    background-image: url('../img/icons/25/save.png');
+}
+.mod-presets .btn.preset-btn-save-as {
+    background-image: url('../img/icons/25/save_as.png');
+    width: 32px
+}
+.mod-presets .btn.preset-btn-rename {
+    /*background-image: url('../img/icons/25/rename.png');*/
+    width: 29px !important;
+    padding: 0;
+    font-size: 12px;
+}
+.btn.preset-btn-rename:after {
+    content: 'REN';
+}
+.mod-presets .btn.preset-btn-delete {
+    background-image: url('../img/icons/25/delete.png');
+    margin-right: 5px
+}
+
+
+.preset-manager {
+    color: #000;
+}
+
+/* = KNOB
+================================================ */
+.mod-pedal-settings .mod-knob {
+    background:#212121;
+    float:left;
+    height:160px;
+    margin-bottom:2px;
+    margin-right:2px;
+    position:relative;
+    text-align:center;
+    width:160px;
+}
+
+.mod-pedal-settings .mod-knob > span.mod-knob-current-value {
+    bottom:12px;
+    font-weight:bold;
+    left: 38px;
+    position:absolute;
+    text-align:center;
+    right: 38px;
+    padding: 2px;
+    border: 1px solid #000;
+    background: black;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-current-value:focus {
+    border: 1px solid #883996;
+    background: black;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-current-value::selection {
+  background: #883996;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-current-value::-moz-selection {
+  background: #883996;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-max-value {
+    font-size:10px;
+    left:110px;
+    position:absolute;
+    text-align:left;
+    bottom: 43px;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-min-value {
+    font-size:10px;
+    position:absolute;
+    text-align:right;
+    right:110px;
+    bottom: 43px;
+}
+.mod-pedal-settings .mod-knob > span.mod-knob-title {
+    color:white;
+    display:block;
+    font-size:11px;
+    font-weight:bold;
+    height:11px;
+    line-height:1;
+    margin:9px 0;
+    position:relative;
+    overflow:hidden;
+    text-transform:uppercase;
+}
+
+.mod-pedal-settings .mod-knob .mod-knob-image {
+    background-image:url(../img/knob.png);
+    background-position:left center;
+    background-repeat:no-repeat;
+    background-size:auto 80px;
+    height:80px;
+    left:40px;
+    position:absolute;
+    overflow:hidden;
+    top:35px;
+    width:80px;
+}
+
+.mod-pedal-settings .mod-knob .mod-knob-image.disabled {
+    opacity:.3;
+}
+
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-3 {
+    background-image:url(../img/knob_steps_3.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-4 {
+    background-image:url(../img/knob_steps_4.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-5 {
+    background-image:url(../img/knob_steps_5.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-6 {
+    background-image:url(../img/knob_steps_6.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-7 {
+    background-image:url(../img/knob_steps_7.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-8 {
+    background-image:url(../img/knob_steps_8.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-9 {
+    background-image:url(../img/knob_steps_9.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-10 {
+    background-image:url(../img/knob_steps_10.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-11 {
+    background-image:url(../img/knob_steps_11.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-12 {
+    background-image:url(../img/knob_steps_12.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-13 {
+    background-image:url(../img/knob_steps_13.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-14 {
+    background-image:url(../img/knob_steps_14.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-15 {
+    background-image:url(../img/knob_steps_15.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-16 {
+    background-image:url(../img/knob_steps_16.png);
+}
+.mod-pedal-settings .mod-knob .mod-knob-image.mod-knob-image-steps-17 {
+    background-image:url(../img/knob_steps_17.png);
+}
+
+/* = ENUMERATED
+================================================ */
+.mod-pedal-settings .mod-enumerated {
+    background:#212121;
+    float:left;
+    height:160px;
+    margin:0 2px 2px 0;
+    position:relative;
+    width:160px;
+}
+
+.mod-presets,
+.mod-file-list {
+    width: 322px !important;
+}
+.radio-preset {
+    height: 9px !important;
+    width: 9px !important;
+    margin: 0 !important;
+}
+
+
+
+.mod-pedal-settings .mod-enumerated .mod-enumerated-list {
+    color:#fff;
+    height:95px;
+    overflow:auto;
+    position:relative;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list .mod-file-list-buttons {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    margin: 3px;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list .mod-enumerated-list {
+    height:130px;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list.expanded .mod-enumerated-list {
+    height: calc(100vh - 175px);
+    z-index: 1;
+    background: #212121;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list .btn-primary {
+    background-color: black;
+    border-color: #773284;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list .btn-primary:hover {
+    border-color: #4f2157;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list.expanded .btn-primary {
+    background-color: #773284;
+    border-color: black;
+}
+.mod-pedal-settings .mod-enumerated.mod-file-list.expanded .btn-primary:hover {
+    background-color: #883996;
+}
+
+.mod-pedal-settings .mod-enumerated .mod-enumerated-list > div {
+    font-weight:bold;
+    padding:1px 9px;
+    cursor:pointer;
+    margin: 0 0 1px 0;
+    background: #2c2c2c;
+}
+
+.mod-pedal-settings .mod-enumerated .mod-enumerated-list > div.selected {
+    background:#883996;
+}
+
+.mod-pedal-settings .mod-enumerated .mod-enumerated-list > div:hover {
+    background:#000;
+}
+.mod-pedal-settings .mod-enumerated .mod-enumerated-list > div.selected:hover {
+    background:#600E6F;
+}
+
+.mod-pedal-settings .mod-enumerated > span.mod-enumerated-title {
+    color:white;
+    display:block;
+    font-size:11px;
+    font-weight:bold;
+    height:11px;
+    line-height:1;
+    margin:9px 0;
+    position:relative;
+    overflow:hidden;
+    text-align:center;
+    text-transform:uppercase;
+}
+
+
+/* = STRING
+================================================ */
+.mod-pedal-settings .mod-string {
+    background:#212121;
+    float:left;
+    height:160px;
+    margin:0 2px 2px 0;
+    position:relative;
+    text-align:center;
+    width:322px !important;
+}
+.mod-pedal-settings .mod-string > span.mod-string-title {
+    color:white;
+    display:block;
+    font-size:11px;
+    font-weight:bold;
+    height:11px;
+    line-height:1;
+    margin:9px 0;
+    position:relative;
+    overflow:hidden;
+    text-transform:uppercase;
+}
+
+.mod-pedal-settings .mod-string-content {
+    font-weight:bold;
+    background: black;
+    height:131px;
+    display:flex;
+}
+.mod-pedal-settings .mod-string-content > textarea.mod-string-value {
+    flex:1;
+    padding:2px;
+    border:1px solid #000;
+    white-space:pre-wrap;
+    resize: none;
+    background: inherit;
+}
+.mod-pedal-settings .mod-string-content > textarea.mod-string-value:focus {
+    border: 1px solid #883996;
+    background: black;
+}
+.mod-pedal-settings .mod-string-content > textarea.mod-string-value::selection {
+  background: #883996;
+}
+.mod-pedal-settings .mod-string-content > textarea.mod-string-value::-moz-selection {
+  background: #883996;
+}
+
+/* = SLIDER
+================================================ */
+.mod-pedal-settings .mod-slider {
+    background:#212121;
+    float:left;
+    font-size:11px;
+    height:160px;
+    margin-bottom:2px;
+    margin-right:2px;
+    overflow:hidden;
+    position:relative;
+    text-align:center;
+    width:80px;
+}
+
+
+.mod-pedal-settings .mod-slider .mod-slider-title {
+    color:white;
+    display:block;
+    font-size:11px;
+    font-weight:bold;
+    height:11px;
+    line-height:1;
+    margin:9px 0;
+    position:relative;
+    overflow:hidden;
+    text-transform:uppercase;}
+
+.mod-pedal-settings .mod-slider .mod-slider-image {
+    background-image:url(../img/slider.png);
+    background-repeat:no-repeat;
+    background-size:auto 70px;
+    height:70px;
+    margin:14px auto 0;
+    width:28px;
+}
+
+.mod-pedal-settings .mod-slider .mod-slider-image:hover {
+    cursor:pointer;
+}
+
+.mod-pedal-settings .mod-slider > span.mod-slider-current-value {
+    bottom:24px;
+    font-size:12px;
+    font-weight:bold;
+    left:0;
+    position:absolute;
+    text-align:center;
+    right:0;
+}
+.mod-pedal-settings .mod-slider > span.mod-slider-max-value {
+    font-size:11px;
+    font-weight:bold;
+    left:0;
+    position:absolute;
+    right:0;
+    text-align:center;
+    top:18px;
+}
+.mod-pedal-settings .mod-slider > span.mod-slider-min-value {
+    bottom:38px;
+    font-size:11px;
+    font-weight:bold;
+    left:0;
+    position:absolute;
+    right:0;
+    text-align:center;
+}
+
+
+/* = SWITCH
+================================================ */
+.mod-pedal-settings .mod-switch {
+    background:#212121;
+    cursor:pointer;
+    float:left;
+    height:160px;
+    margin-bottom:2px;
+    margin-right:2px;
+    position:relative;
+    text-align:center;
+    width:160px;
+}
+
+.mod-pedal-settings .mod-switch > span.mod-switch-title {
+    color:white;
+    display:block;
+    font-size:11px;
+    font-weight:bold;
+    height:11px;
+    line-height:1;
+    margin:9px 0;
+    position:relative;
+    overflow:hidden;
+    text-transform:uppercase;
+}
+
+.mod-pedal-settings .mod-switch .mod-switch-image {
+    background-image:url(../img/switch.png);
+    background-position:left center;
+    background-repeat:no-repeat;
+    background-size:auto 50px;
+    height:50px;
+    left:30px;
+    position:absolute;
+    overflow:hidden;
+    top:64px;
+    width:100px;
+}
+
+.mod-pedal-settings #mod-switch-transport-play .mod-switch-image {
+  width: 50px;
+  height: 50px;
+  background-size: auto 50px;
+}
+
+.mod-pedal-settings #mod-switch-transport-play .mod-switch-image.stop.off,
+.mod-pedal-settings #mod-switch-transport-play .mod-switch-image.play.on {
+  background-color: #883996;
+}
+
+.mod-pedal-settings #mod-switch-transport-play .mod-switch-image.stop {
+  background-image:url(../img/icons/stop.png);
+  left: 30px;
+}
+
+.mod-pedal-settings #mod-switch-transport-play .mod-switch-image.play {
+  background-image:url(../img/icons/transport.png);
+  left: 80px;
+}
+
+.mod-pedal-settings .mod-switch .mod-footswitch-image {
+    background-image:url(../img/footswitch.png);
+    background-position:left center;
+    background-repeat:no-repeat;
+    background-size:auto 64px;
+    height:64px;
+    left:47px;
+    position:absolute;
+    overflow:hidden;
+    top:55px;
+    width:64px;
+}
+
+/* This makes the switch works either with film of switch widget */
+.mod-pedal-settings .mod-switch .mod-switch-image.on {
+    background-position:right center;
+}
+.mod-pedal-settings .mod-switch .mod-switch-image.off {
+    background-position:left center;
+}
+
+/* Invert the display of bypass, so that we display ON when bypass is off */
+.mod-pedal-settings .bypass .mod-switch-image.on {
+    background-position:left center !important;
+}
+.mod-pedal-settings .bypass .mod-switch-image.off {
+    background-position:right center !important;
+}
+.mod-pedal-settings .bypass .mod-switch-image {
+    background-position:right center !important;
+}
+
+.mod-pedal-settings .bypass .mod-light {
+    background-repeat:no-repeat;
+    background-size:auto 24px;
+    height:24px;
+    margin:20px auto 0;
+    width:24px;
+}
+.mod-pedal-settings .bypass .mod-light.off {
+    background-image:url(../img/purple-light-off.png);
+}
+.mod-pedal-settings .bypass .mod-light.on  {
+    background-image:url(../img/purple-light-on.png);
+}
+
+
+
+/* ADDRESSING BUTTON */
+.mod-pedal-settings .mod-knob .mod-address,
+.mod-pedal-settings .mod-enumerated .mod-address,
+.mod-pedal-settings .mod-switch .mod-address,
+.mod-pedal-settings .mod-slider .mod-address {
+    background-image:url(../img/icons/36/faders.png);
+    background-position:center center;
+    background-repeat:no-repeat;
+    background-size: 36px;
+    bottom:0;
+    cursor:pointer;
+    height:36px;
+    position:absolute;
+    right:0;
+    width:36px;
+    transition: all 0.33s;
+}
+
+.mod-pedal-settings .mod-knob .mod-address:hover,
+.mod-pedal-settings .mod-enumerated .mod-address:hover,
+.mod-pedal-settings .mod-switch .mod-address:hover,
+.mod-pedal-settings .mod-slider .mod-address:hover {
+    background-color:#883996;
+}
+
+
+/* ADDRESSING POP-UP */
+.mod-pedal-settings-address {
+    background:rgba(0,0,0,.75);
+    bottom:0;
+    left:0;
+    position:absolute;
+    right:0;
+    top:0;
+    z-index:1000;
+    /* new style */
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:start;
+}
+
+.mod-pedal-settings-address .mod-spacer {
+    height:10%;
+}
+
+.mod-pedal-settings-address .mod-box {
+    background:white;
+    padding:18px 18px 0 18px;
+    width:766px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    /* old style */
+    /*
+    margin:-150px -430px;
+    left:48%;
+    top:40%;
+    max-height:70%;
+    position:absolute;
+    */
+    /* new style */
+    margin:0;
+    max-height:90%;
+    position:initial;
+    position:unset;
+}
+
+.mod-pedal-settings-address h1 {
+    font-size:18px;
+    line-height:1;
+    margin:0 0 18px 0;
+    padding:0;
+    text-transform:uppercase;
+}
+
+.mod-pedal-settings-address label {
+    display:inline-block;
+    float:left;
+    line-height:2;
+    width:96px;
+}
+
+.mod-pedal-settings-address .mod-controls {
+    float:left;
+}
+
+.mod-pedal-settings-address input[type="text"] {
+    width:190px;
+}
+
+.mod-pedal-settings-address .mod-value input[type="number"] {
+    width:190px;
+}
+
+.mod-pedal-settings-address .mod-range input[type="number"] {
+    padding-right: 4px;
+    width: 41% !important;
+    float: left;
+}
+.mod-pedal-settings-address .mod-range input[type="number"][name="max"] {
+    width: 47% !important;
+}
+.mod-pedal-settings-address .mod-range span {
+    width: 12%;
+    text-align: center;
+    float: left;
+    line-height: 2em;
+}
+
+.mod-pedal-settings-address select {
+    width:202px;
+}
+
+/* FIXME put it in the right place */
+.mod-pedal.replaceable-drop {
+    opacity: 0.5;
+    filter: blur(2px);
+}
+.mod-pedal.possible-replaceable-drop {
+    /*opacity: 0.75;*/
+}
+.mod-pedal.possible-replaceable-drop .mod-drag-handle {
+    background: url("/img/switch.svg") no-repeat center center;
+    background-color: #fff;
+    background-color: rgba(255,255,255,0.5);
+    background-size: contain;
+    border-radius: 20px;
+    margin: -20px;
+    opacity: 1 !important;
+    z-index: 99999 !important;
+}
+
+#pedalboards-library .js-pedalboards {
+    padding: 8px 0;
+}
+
+#pedalboards-library .separator-title {
+    color: #fff;
+    font-size: 1.4em;
+    margin: 0 8px 0 1%;
+}
+
+#pedalboards-library .separator {
+    background: rgb(153, 153, 153);
+    display: inline-block;
+    height: 2px;
+    vertical-align: middle;
+}
+
+#pedalboards-library .separator.separator-user {
+    width: calc(99% - 8px - 17rem);
+}
+
+#pedalboards-library .separator.separator-factory {
+    width: calc(99% - 8px - 19.5rem);
+}
+
+/* FIXME put it in the right place */
+#pedalboards-library .js-pedalboards.list-selected .img {
+  display: none;
+}
+
+#bank-library #bank-pedalboards {
+    width: 680px;
+}
+
+#bank-library #bank-title {
+    width: unset;
+    height: unset;
+}
+
+#bank-library #bank-pedalboards {
+    top: 110px;
+}
+
+/*#bank-library #bank-pedalboards .ui-sortable-helper .pedalboard {
+    cursor: -webkit-grabbing !important;
+    cursor: grabbing !important;
+}*/
+
+#bank-library #bank-pedalboards .pedalboard .img > img {
+    max-width: 100%;
+}
+
+#bank-library #bank-pedalboards-search,
+#bank-library #bank-pedalboards-search #bank-pedalboards-result {
+    width: calc(80% - 680px);
+}
+
+#bank-library #bank-pedalboards-search .pedalboard {
+    margin: 10px;
+}
+
+#bank-library #bank-pedalboards-search .separator-title {
+    color: #fff;
+    font-size: 1.4em;
+    margin: 0 10px;
+}
+
+#bank-library #bank-pedalboards-search .separator {
+    background: rgb(153, 153, 153);
+    display: inline-block;
+    height: 2px;
+    vertical-align: middle;
+}
+
+#bank-library #bank-pedalboards-search .separator.separator-user {
+    width: calc(100% - 20px - 16.5rem);
+}
+
+#bank-library #bank-pedalboards-search .separator.separator-factory {
+    width: calc(100% - 20px - 19rem);
+}
+
+#bank-library #bank-pedalboards-search .js-canvas {
+    display: flex;
+    padding: 8px 0;
+    flex-flow: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* these ones below are not always supported, default to center in worst case */
+    justify-content: space-evenly;
+    justify-content: space-around;
+}
+
+#bank-library #bank-pedalboards-search .js-canvas .js-pedalboard-item {
+    width: 33%;
+    min-width: 230px;
+    max-width: 320px;
+}
+
+#bank-library #bank-pedalboards-search .input-clean {
+    top: 38px !important;
+}
+
+@media only screen and (max-width: 1450px) {
+    #bank-library #bank-pedalboards {
+        width: 500px;
+    }
+    #bank-library #bank-pedalboards-search,
+    #bank-library #bank-pedalboards-search #bank-pedalboards-result {
+        width: calc(80% - 500px);
+    }
+}
+
+/*#bank-library #bank-pedalboards .pedalboard > img {
+    width: 100%;
+}*/
+
+.plugin-description h1::selection,
+.plugin-description p::selection {
+    background: #4f2157
+}
+
+#pedalboard-info .js-save.unmodified-changes {
+  background-color: #883996;
+}
+
+#mod-cloud-terms {
+    z-index: 100000;
+}
+#mod-cloud-terms .mod-box {
+    width: 500px;
+    left: 0;
+    right: 0;
+    margin: -150px auto;
+}
+#mod-cloud-terms .actions {
+    text-align: center;
+}
+#mod-cloud-terms .btn {
+    margin: 0px 4px;
+}

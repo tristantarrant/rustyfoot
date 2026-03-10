@@ -1,0 +1,14 @@
+pub mod auth;
+pub mod bank;
+pub mod effect;
+pub mod favorites;
+pub mod filebrowser;
+pub mod files;
+pub mod jack;
+pub mod misc;
+pub mod pedalboard;
+pub mod recording;
+pub mod snapshot;
+pub mod system;
+pub mod templates;
+pub mod websocket;

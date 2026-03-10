@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html>
+
+<!-- HEAD -->
+<head>
+<meta charset="UTF-8">
+<title>MOD</title>
+
+<link rel="apple-touch-icon" sizes="57x57" href="img/favicon/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="img/favicon/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="img/favicon/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="img/favicon/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="img/favicon/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="img/favicon/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="img/favicon/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="img/favicon/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/favicon/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/favicon/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="img/favicon/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon/favicon-16x16.png">
+<link rel="manifest" href="img/favicon/manifest.json">
+<meta name="msapplication-TileColor" content="#111111">
+<meta name="msapplication-TileImage" content="img/favicon/ms-icon-144x144.png">
+<meta name="theme-color" content="#111111">
+
+<link rel="stylesheet" type="text/css" href="css/fontello/css/fontello.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="css/main.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="css/dashboard.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="css/fonts.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="img/icons/icons.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="css/pedals.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="resources/pedals/default.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="js/lib/slick/slick.css?v={{version}}"/>
+<link rel="stylesheet" type="text/css" href="js/lib/slick/slick-theme.css?v={{version}}"/>
+
+<style type="text/css">
+    /* STYLE FOR LOADING ANIMATION */
+    body.initialized #loading { display: none; }
+    .loadinganim { width:100px; height:100px; position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); z-index:-1; }
+    .loadinganim path { stroke:#883996; stroke-width:4; stroke-linecap:butt; }
+    .loadingcircle { animation: loadingcircle 0.5s linear infinite; }
+    @keyframes loadingcircle { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
+</style>
+
+<script type="text/javascript" src="js/lib/jquery-1.9.1.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery-ui-1.10.1.custom.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery.ui.touch-punch.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery.ba-resize.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/mustache.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery.svg.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/sprintf-0.6.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery.mousewheel.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/jquery.textareaAutoResize.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/arrive.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/lunr.min.js?v={{version}}"></script>
+<script type="text/javascript" src="js/lib/slick/slick.min.js?v={{version}}"></script>
+
+<script type="text/javascript">
+    {% autoescape None %}
+    var TEMPLATES = {}
+    SITEURL = '{{cloud_url}}'
+    CLOUD_LABS_URL = '{{cloud_labs_url}}'
+    PLUGINS_URL      = '{{plugins_url}}'
+    PEDALBOARDS_URL  = '{{pedalboards_url}}'
+    PEDALBOARDS_LABS_URL  = '{{pedalboards_labs_url}}'
+    CONTROLCHAIN_URL = '{{controlchain_url}}'
+    LV2_PLUGIN_DIR   = '{{lv2_plugin_dir}}'
+    VERSION          = '{{version}}'
+    BIN_COMPAT       = '{{bin_compat}}'
+    PLATFORM         = '{{platform}}'
+    var SAMPLERATE   = {{sampleRate}}
+    var NOTIFICATIONS_ENABLED = true
+    var HARDWARE_PROFILE = JSON.parse(atob('{{hardware_profile}}'))
+    var DEFAULT_ICON_TEMPLATE = '{{default_icon_template}}'
+    var DEFAULT_SETTINGS_TEMPLATE = '{{default_settings_template}}'
+    var DEFAULT_PEDALBOARD = '{{default_pedalboard}}'
+    var FAVORITES = {{favorites}}
+    var PREFERENCES = {{preferences}}
+    var ADDRESSING_PAGES = {{addressing_pages}}
+    var DEBUG = true;
+    if (!DEBUG) {
+        console = console || {}
+        console.log = function() {}
+    }
+
+    var CLOUD_TERMS_ACCEPTED = PREFERENCES['cloud-terms-accepted'] === "true";
+    var USING_MOD_DESKTOP = {{using_desktop}};
+    var USING_MOD_DEVICE = {{using_mod}} && !{{using_desktop}};
+
+    /*
+    var INFO = {
+        "hardware": {},
+        "env": {},
+        "python": {},
+        "uname": {}
+    }
+    */
+
+    // for mod-app control
+    var desktop = null
+
+$('document').ready(function() {
+    desktop = new Desktop({
+        titleBox: $('#pedalboard-info h1'),
+        pedalboard: $('#pedalboard-dashboard'),
+        zoomIn: $('.zoom-in'),
+        zoomOut: $('.zoom-out'),
+        addMidiButton: $('#mod-show-midi-port'),
+        midiPortsWindow: $('#midi-ports-window'),
+        midiPortsList: $("#midi-ports-list"),
+        pedalPresetsWindow: $('#pedal-presets-window'),
+        pedalPresetsList: $("#pedal-presets-list"),
+        pedalPresetsOverlay: $("#pedal-presets-list-input"),
+        updateDeviceWindow: $('#cc-device-update-window'),
+        saveBox: $('#save-pedalboard'),
+        saveButton: $('#pedalboard-info .js-save'),
+        saveAsButton: $('#pedalboard-info .js-save-as'),
+        resetButton:  $('#pedalboard-info .js-reset'),
+        cvAddressingButton:  $('#pedalboard-info .js-cv-addressing'),
+        snapshotSaveButton: $('#pedalboard-info .js-preset-save'),
+        snapshotSaveAsButton: $('#pedalboard-info .js-preset-save-as'),
+        snapshotManageButton: $('#pedalboard-info .js-preset-manage'),
+        transportButton: $('#mod-transport-icon'),
+        transportWindow: $('#mod-transport-window'),
+        transportPlay: $('#mod-switch-transport-play'),
+        transportBPB: $('#mod-knob-transport-bpb'),
+        transportBPM: $('#mod-knob-transport-bpm'),
+        transportSyncMode: $('#mod-enum-transport-sync-mode'),
+        effectBox: $('#plugins-library'),
+        pedalboardTrigger: $('#main-menu #mod-plugins'),
+        cloudPluginBox: $('#cloud-plugins-library'),
+        cloudPluginBoxTrigger: $('#mod-cloud-plugins'),
+        pedalboardBox: $('#pedalboards-library'),
+        pedalboardBoxTrigger: $('#main-menu #mod-pedalboard'),
+        bankBox: $('#bank-library'),
+        bankBoxTrigger: $('#main-menu #mod-bank'),
+        bankList: $('#bank-list'),
+        fileManagerBox: $('#file-manager-library'),
+        fileManagerBoxTrigger: $('#main-menu #mod-file-manager'),
+        shareButton: $('#pedalboard-info .js-cloud'),
+        shareWindow: $('#share-window'),
+        presetSaveBox: $('#save-preset'),
+        devicesIcon: $('#mod-devices'),
+        devicesWindow: $('#mod-devices-window'),
+        statusIcon: $('#mod-status'),
+        settingsIcon: $('#mod-settings'),
+        upgradeIcon: $('#mod-update'),
+        upgradeWindow: $('#mod-upgrade'),
+        bypassLeftButton: $("#mod-bypassLeft"),
+        bypassRightButton: $("#mod-bypassRight"),
+        bufferSizeButton: $('#mod-buffersize'),
+        xrunsButton: $('#mod-xruns'),
+        cpuStatsButton: $('#mod-cpu-stats'),
+    })
+
+    if ('{{bundlepath}}' && '{{title}}') {
+        desktop.title = '{{title}}'
+        desktop.pedalboardBundle   = '{{bundlepath}}'
+        desktop.pedalboardEmpty    = false
+        desktop.pedalboardModified = true
+    }
+
+    if (!{{codec_truebypass}}) {
+        $('#mod-bypassLeft').hide()
+        $('#mod-bypassRight').hide()
+    }
+
+    if (USING_MOD_DEVICE) {
+        if (CLOUD_TERMS_ACCEPTED) {
+            desktop.setupDeviceAuthentication()
+        }
+    } else {
+        desktop.upgradeWindow.upgradeWindow('setErrored')
+
+        // hide stuff that is only relevant to MOD Devices
+        $('#mod-bypassLeft').hide()
+        $('#mod-bypassRight').hide()
+        $('#mod-cloud-plugins').hide()
+        $('#mod-update').hide()
+        $('#pedalboard-info').find('.js-cloud').hide()
+
+        // show other stuff to make it less empty
+        $('#mod-xruns').show()
+        $('#mod-status').show().statusTooltip('updatePosition')
+    }
+
+    if (PREFERENCES['plugins-folded'] == "true") {
+        desktop.effectBox.effectBox('toggle')
+    }
+    if (PREFERENCES['show-labs-plugins'] == "true") {
+        $("#cloud-plugins-source").parent().show()
+    }
+    desktop.pedalboardBox.pedalboardBox('initViewMode', PREFERENCES['pb-view-mode'])
+
+    // Apply background preference
+    if (PREFERENCES['background'] && PREFERENCES['background'] !== 'default') {
+        $('body').addClass('bg-' + PREFERENCES['background'])
+    }
+
+    if ({{using_desktop}}) {
+        desktop.setupApp()
+    } else {
+        if (PREFERENCES['dev-mode'] == "on") {
+            enable_dev_mode(true)
+        }
+    }
+
+    // start code for ajax loading bar
+
+    NProgress.configure({
+      template: '<div class="bar" role="bar"><div class="peg"></div></div><div class="spinner" role="spinner"><div class="spinner-icon"></div></div>'
+    });
+
+    $(document)
+    .ajaxStart(function(data) {
+        NProgress.start();
+    })
+    .ajaxComplete(function() {
+        NProgress.done();
+    });
+
+    // end code for ajax loading bar
+
+    // start of terms handling
+
+    var terms = $('#mod-cloud-terms')
+    if (PREFERENCES['cloud-terms-accepted'] !== undefined && (USING_MOD_DEVICE || PREFERENCES['cloud-terms-accepted'] === "true")) {
+        if (CLOUD_TERMS_ACCEPTED) {
+            desktop.setupMatomo()
+            terms.hide()
+            $('#pedalboard-info').find('.js-cloud').show()
+        }
+        terms.hide()
+    } else {
+        terms.find('.js-accept').click(function () {
+            CLOUD_TERMS_ACCEPTED = true
+            desktop.saveConfigValue("cloud-terms-accepted", true)
+            desktop.setupMatomo()
+            if (USING_MOD_DEVICE) {
+                desktop.setupDeviceAuthentication()
+                $('#pedalboard-info').find('.js-cloud').show()
+            }
+            terms.hide()
+        })
+        terms.find('.js-reject').click(function () {
+            desktop.saveConfigValue("cloud-terms-accepted", false)
+            terms.hide()
+        })
+        terms.show()
+    }
+
+    // end of terms handling
+
+    /*
+    $.ajax({
+        url: '/system/info',
+        method: 'GET',
+        success: function (info) {
+            INFO = info
+        },
+        cache: false,
+        dataType: 'json'
+    });
+    */
+
+    // add iOS/iPadOS-specific document body class `.ios`
+    /*
+    (function () {
+        var isiOSPlatform = [
+            'iPad Simulator',
+            'iPhone Simulator',
+            'iPod Simulator',
+            'iPad',
+            'iPhone',
+            'iPod'
+        ].includes(navigator.platform);
+        var isiPadOS13SUserAgent = (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+        var isiOSUserAgent = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
+        var isiOS = isiOSPlatform || isiPadOS13SUserAgent || isiOSUserAgent;
+
+        if (isiOS) {
+            $('body').addClass('ios');
+        }
+    })();
+    */
+})
+</script>
+
+<script type="text/javascript" src="js/templates.js?v={{version}}"></script>
+<script type="text/javascript" src="js/common.js?v={{version}}"></script>
+<script type="text/javascript" src="js/wait.js?v={{version}}"></script>
+<script type="text/javascript" src="js/file_transfer.js?v={{version}}"></script>
+<script type="text/javascript" src="js/window.js?v={{version}}"></script>
+<script type="text/javascript" src="js/modgui.js?v={{version}}"></script>
+<script type="text/javascript" src="js/notification.js?v={{version}}"></script>
+<script type="text/javascript" src="js/installation.js?v={{version}}"></script>
+<script type="text/javascript" src="js/desktop.js?v={{version}}"></script>
+<script type="text/javascript" src="js/pedalboard.js?v={{version}}"></script>
+<script type="text/javascript" src="js/pedalboards.js?v={{version}}"></script>
+<script type="text/javascript" src="js/file_manager.js?v={{version}}"></script>
+<script type="text/javascript" src="js/banks.js?v={{version}}"></script>
+<script type="text/javascript" src="js/effects.js?v={{version}}"></script>
+<script type="text/javascript" src="js/cloudplugin.js?v={{version}}"></script>
+<script type="text/javascript" src="js/mididevices.js?v={{version}}"></script>
+<script type="text/javascript" src="js/snapshot.js?v={{version}}"></script>
+<script type="text/javascript" src="js/hardware.js?v={{version}}"></script>
+<script type="text/javascript" src="js/share.js?v={{version}}"></script>
+<script type="text/javascript" src="js/networkstatus.js?v={{version}}"></script>
+<script type="text/javascript" src="js/upgrade.js?v={{version}}"></script>
+<script type="text/javascript" src="js/host.js?v={{version}}"></script>
+<script type="text/javascript" src="js/cc-manager.js?v={{version}}"></script>
+<script type="text/javascript" src="js/transport.js?v={{version}}"></script>
+<script type="text/javascript" src="js/nprogress.js?v={{version}}"></script>
+<script type="text/javascript" src="js/utils/tempo.js?v={{version}}"></script>
+<script type="text/javascript" src="js/utils/plugins.js?v={{version}}"></script>
+
+<!-- For browsers with shields on, avoid breaking on Matomo related code -->
+<script>var _paq = { push: new Function() }</script>
+
+</head>
+<!-- END HEAD -->
+
+<!-- BODY -->
+<body class="mod-dark">
+
+<!-- <div id="dropable-area" style="position:fixed;width:30px;height:30px;left:10px;top:10px;background:rgba(0,255,0,0.1);z-index:999999999;pointer-events:none;"></div> -->
+<!-- <div id="draggable-area" style="position:fixed;width:30px;height:30px;left:80px;top:80px;background:rgba(255,0,0,0.1);z-index:999999999;pointer-events:none;"></div> -->
+
+<!-- LOADING SVG -->
+<svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" id="loading" class="loadinganim" version="1.1">
+    <g transform="translate(50, 50)"><g class="loadingcircle"><g transform="translate(-50,-50)">
+        <path style="opacity:1;" d="M 49.999999,1.99999 A 46,46 0 0 0 37.576684,3.63555" />
+        <path d="M 37.576684,3.63555 A 46,46 0 0 0 25.999998,8.43077" style="opacity:0.95;" />
+        <path style="opacity:0.9;" d="m 25.999998,8.43077 a 46,46 0 0 0 -9.941122,7.62809" />
+        <path d="M 16.058876,16.05886 A 46,46 0 0 0 8.430781,25.99999" style="opacity:0.85;" />
+        <path style="opacity:0.8;" d="M 8.430781,25.99999 A 46,46 0 0 0 3.635561,37.57667" />
+        <path d="M 3.635561,37.57667 A 46,46 0 0 0 2,50" style="opacity:0.75;" />
+        <path style="opacity:0.7;" d="M 2,50 A 46,46 0 0 0 3.63556,62.4233" />
+        <path d="M 3.63556,62.4233 A 46,46 0 0 0 8.430781,74" style="opacity:0.65;" />
+        <path style="opacity:0.6;" d="m 8.430781,74 a 46,46 0 0 0 7.628093,9.9411" />
+        <path d="m 16.058874,83.9411 a 46,46 0 0 0 9.941128,7.6281" style="opacity:0.55;" />
+        <path style="opacity:0.5;" d="m 26.000002,91.5692 a 46,46 0 0 0 11.576682,4.7952" />
+        <path d="M 37.576684,96.3644 A 46,46 0 0 0 50,98" style="opacity:0.45;" />
+        <path style="opacity:0.4;" d="M 49.999999,98 A 46,46 0 0 0 62.423313,96.3644" />
+        <path d="M 62.423313,96.3644 A 46,46 0 0 0 74,91.5692" style="opacity:0.35;" />
+        <path style="opacity:0.3;" d="m 74,91.5692 a 46,46 0 0 0 9.941126,-7.6281" />
+        <path d="M 83.941126,83.9411 A 46,46 0 0 0 91.56922,74" style="opacity:0.25;" />
+        <path style="opacity:0.2;" d="M 91.56922,74 A 46,46 0 0 0 96.36444,62.4233" />
+        <path d="M 96.36444,62.4233 A 46,46 0 0 0 98,50" style="opacity:0.15;" />
+        <path style="opacity:0.1;" d="M 98,50 A 46,46 0 0 0 96.36444,37.57667" />
+        <path d="M 96.36444,37.57667 A 46,46 0 0 0 91.56922,25.99999" style="opacity:0.05;" />
+        <path style="opacity:0.02;" d="M 91.56922,25.99999 A 46,46 0 0 0 83.941126,16.05887" />
+    </g></g></g>
+    <path d="m 62.633535,68.542327 c 0,1.710496 -1.158195,2.565444 -3.473354,2.565444 l -18.357511,0 c -2.316079,0 -3.473963,-0.854948 -3.473963,-2.565444 l 0,-14.449074 c 0,-1.710794 1.157884,-2.566342 3.473963,-2.566342 l 18.357511,0 c 2.315159,0 3.473354,0.855548 3.473354,2.566342 l 0,14.449074 z M 40.80267,47.421483 c -1.579268,0 -2.921041,0.164408 -4.026564,0.493548 -1.105488,0.328817 -2.006985,0.790084 -2.703814,1.381966 -0.698239,0.592804 -1.204412,1.296722 -1.520206,2.111777 -0.31597,0.815975 -0.473569,1.724806 -0.473569,2.724061 l 0,14.369611 c 0,0.973684 0.157599,1.875514 0.473569,2.70488 0.315794,0.828456 0.821967,1.539075 1.520206,2.131569 0.696829,0.591882 1.598326,1.053148 2.703814,1.381976 1.105523,0.328519 2.447296,0.492927 4.026564,0.492927 l 18.357511,0 c 1.578958,0 2.921053,-0.164408 4.026574,-0.492927 1.104602,-0.328828 2.006731,-0.790094 2.704272,-1.381976 0.696918,-0.592494 1.203557,-1.303113 1.519893,-2.131569 0.316038,-0.829366 0.473446,-1.731196 0.473446,-2.70488 l 0,-14.369611 c 0,-0.999255 -0.157408,-1.908086 -0.473446,-2.724061 -0.316336,-0.815055 -0.822975,-1.518973 -1.519893,-2.111777 -0.697541,-0.591882 -1.59967,-1.053149 -2.704272,-1.381966 -1.105521,-0.32914 -2.447616,-0.493548 -4.026574,-0.493548 l -18.357511,0 z m 7.510278,-23.988304 0,6.519841 c 1.416989,0.01 2.573652,1.171586 2.573652,2.590095 l 0,5.270923 c 0,1.42552 -1.166103,2.591315 -2.590393,2.591315 l -3.387187,0 c -1.42369,0 -2.590106,-1.165795 -2.590106,-2.591315 l 0,-5.270923 c 0,-1.418509 1.156365,-2.580354 2.572744,-2.590095 l 0,-6.519841 -2.091077,0 c -1.234608,0 -2.285016,0.128177 -3.149705,0.386061 -0.864687,0.256354 -1.569827,0.617144 -2.115127,1.08055 -0.54591,0.462785 -0.942323,1.019047 -1.189546,1.667563 -0.246924,0.648815 -0.370153,1.353654 -0.370153,2.115427 l 0,11.241826 c 0,0.781873 0.123229,1.492493 0.370153,2.130958 0.247223,0.638465 0.643636,1.188026 1.189546,1.651421 0.5453,0.463706 1.25044,0.824197 2.115127,1.08116 0.864689,0.257885 1.915097,0.386372 3.149705,0.386372 l 14.36108,0 c 1.235218,0 2.285626,-0.128487 3.150315,-0.386372 0.864688,-0.256963 1.569528,-0.617454 2.114827,-1.08116 0.5456,-0.463395 0.942322,-1.012956 1.189546,-1.651421 0.246924,-0.638465 0.37023,-1.349085 0.37023,-2.130958 l 0,-11.241826 c 0,-0.761773 -0.123306,-1.466612 -0.37023,-2.115427 -0.247224,-0.648516 -0.643946,-1.204778 -1.189546,-1.667563 -0.545299,-0.463406 -1.250139,-0.824196 -2.114827,-1.08055 -0.864689,-0.257884 -1.915097,-0.386061 -3.150315,-0.386061 l -8.848713,0 z m 11.656808,10.366465 c 0.747474,0 1.354577,0.607415 1.354577,1.354576 0,0.747772 -0.607103,1.354265 -1.354577,1.354265 -0.74837,0 -1.354265,-0.606493 -1.354265,-1.354265 0,-0.747161 0.605895,-1.354576 1.354265,-1.354576 M 50.000002,9.3491652 c 22.447098,0 40.650851,18.2040528 40.650851,40.6505408 0,22.447709 -18.203753,40.651128 -40.650851,40.651128 -22.447469,0 -40.6508553,-18.203419 -40.6508553,-40.651128 0,-22.446488 18.2033863,-40.6505408 40.6508553,-40.6505408 m 0,6.0619268 c 19.099182,0 34.588924,15.489421 34.588924,34.588614 0,19.100403 -15.489742,34.589834 -34.588924,34.589834 -19.100346,0 -34.589384,-15.489431 -34.589384,-34.589834 0,-19.099193 15.489038,-34.588614 34.589384,-34.588614 m -4.520111,38.579866 2.285938,0 c 0.961502,0 1.747636,0.786444 1.747636,1.747948 l 0,11.464987 c 0,0.960294 -0.786743,1.747637 -1.747636,1.747637 l -2.285938,0 c -0.961814,0 -1.747948,-0.786133 -1.747948,-1.747637 l 0,-11.464987 c 0,-0.961504 0.785524,-1.747948 1.747948,-1.747948"
+          style="fill:#212121;fill-opacity:1;fill-rule:evenodd;stroke:none"
+          class="loadinglogo"/>
+</svg>
+<!-- END LOADING SVG -->
+
+<!-- PRELOAD -->
+<div class="mod-hidden">
+    <img src="img/icons/blocked.svg" alt=""/>
+    <img src="img/icons/25/reload.png" width="25px" height="25px" alt=""/>
+</div>
+<!-- END PRELOAD -->
+
+<!-- NOTIFICATIONS -->
+<div id="notifications" class="mod-hidden mod-init-hidden"></div>
+<!-- END NOTIFICATIONS -->
+
+{% if using_desktop == 'true' or using_mod == 'true' %}
+<!-- CLOUD-TERMS-WINDOW -->
+<div id="mod-cloud-terms" class="save-popup mod-hidden">
+    <div class="mod-box">
+        {% if using_desktop == 'true' %}
+        <h1>Welcome to MOD Desktop!</h1>
+        <div>
+            <p>
+                We're thrilled to have you on board and can't wait for you to explore all the amazing features we've built for you.
+                Before you dive in, there's just a little bit of housekeeping to take care of.<br/>
+                By using this application you're agreeing to our
+                <a href="/desktop-tou.html" target="_blank">Terms of Use</a>
+                and
+                <a href="/desktop-pp.html" target="_blank">Privacy Policy</a>.
+                They outline how we work together, use your data, and protect your privacy – ensuring a safe and enjoyable experience for everyone.<br/>
+                So, take a quick moment to review these documents.
+                Once you're all set, the world of MOD is yours to explore.
+                Happy modding!<br/>
+            </p>
+        </div>
+        {% else %}
+        <h1 class="pull-left">Terms of Use for MOD online components</h1>
+        <span class="js-reject close">&times;</span>
+        <div class="bottom">
+            <div class="clearfix"></div>
+            <p>
+                (NOTE: THIS AN EXAMPLE TEXT YET TO BE REVIEWED)<br/>
+                Your MOD unit can receive firmware updates over the internet, and also download new plugins and pedalboards.<br/>
+                The use of these online services is under Terms of Use and Privacy Policy in order to comply with different regulatory laws across the globe.<br/>
+            </p>
+            <p>
+                Please review our
+                <a href="/desktop-tou.html" target="_blank">Terms of Use</a>
+                and
+                <a href="/desktop-pp.html" target="_blank">Privacy Policy</a> before continuing.<br/>
+                While you can freely use your MOD unit without accepting these terms, you must agree to them in order to enable or perform any online interaction.
+            </p>
+        </div>
+        {% end %}
+        <div class="controls actions">
+            {% if using_desktop == 'true' %}
+            <button class="js-accept btn btn-success">Agree and Continue</button>
+            {% else %}
+            <button class="js-reject btn btn-danger">Disagree</button>
+            <button class="js-accept btn btn-success">Agree</button>
+            {% end %}
+        </div>
+    </div>
+</div>
+<!-- END CLOUD-TERMS-WINDOW -->
+{% end %}
+
+<!-- WRAPPER -->
+<div id="wrapper" class="mod-init-hidden">
+
+    <!-- PEDALBOARD-SETTINGS-WINDOW -->
+    <div id="pedalboard-settings" class="mod-hidden">
+        <h1>Settings</h1>
+        <div class="js-canvas"></div>
+    </div>
+    <!-- END PEDALBOARD-SETTINGS-WINDOW -->
+
+    <!-- PEDALBOARD -->
+    <div id="pedalboard">
+
+        <!-- SAVE PEDALBOARD WINDOW -->
+        <div id="save-pedalboard" class="save-popup mod-hidden">
+            <div class="mod-box">
+                <h1 class="pull-left">Saving Pedalboard</h1><span class="js-cancel-saving close">&times;</span>
+                <form class="bottom">
+                    <div class="clearfix"></div>
+                    <div class="controls">
+                        <label>Name</label>
+                        <input type="text" class="form-control"/>
+                    </div>
+                    <div class="controls actions">
+                        <button class="js-cancel-saving btn btn-danger">Cancel</button>
+                        <button class="js-save btn btn-success">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END SAVE PEDALBOARD WINDOW -->
+
+        <!-- SAVE SNAPSHOTS WINDOW -->
+        <div id="save-preset" class="save-popup mod-hidden" style="z-index:1001;">
+            <div class="mod-box">
+                <h1 class="pull-left">Saving</h1><span class="js-cancel-saving close">&times;</span>
+                <form class="bottom">
+                    <div class="clearfix"></div>
+                    <div class="controls">
+                        <label>Name</label>
+                        <input type="text" class="form-control"/>
+                    </div>
+                    <div class="controls actions">
+                        <button class="js-cancel-saving btn btn-danger">Cancel</button>
+                        <button class="js-save btn btn-success">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END SAVE SNAPSHOT WINDOW -->
+
+        <!-- PEDALBOARD SHARE WINDOW -->
+        <div id="share-window" class="save-popup mod-hidden">
+            <div class="box">
+                <h1 class="pull-left">SHARE</h1><span class="js-cancel close">&times;</span>
+                <div class="unstable-warning mod-hidden">
+                  <b>Warning:</b> This pedalboard contains MOD Labs plugins and won't be available to most users
+                </div>
+                <form>
+                    <div class="clearfix"></div>
+                    <div class="form-group" id="share-window-form">
+                        <div class="col-sm-6 unpadded-l">
+                            <label for="pedalboard-share-name">
+                                AUTHOR NAME <br/>
+                                <input type="text" class="form-control" id="pedalboard-share-name" value='{{user_name}}'/>
+                            </label>
+                        </div>
+                        <div class="col-sm-6 unpadded">
+                            <label for="pedalboard-share-email">
+                                E-MAIL <br/>
+                                <input type="text" class="form-control" id="pedalboard-share-email" value='{{user_email}}'/>
+                            </label>
+                        </div>
+                        <label for="pedalboard-share-title">
+                            PEDALBOARD NAME <br/>
+                            <input type="text" class="form-control" id="pedalboard-share-title" placeholder="How will you call this pedalboard?"/>
+                        </label>
+                        <label for="pedalboard-share-hidden">
+                            <input type="checkbox" id="pedalboard-share-hidden" style="margin-right:4px">Hide pedalboard from public feed</input>
+                        </label>
+                        <label for="pedalboard-share-comment">
+                            <textarea rows="4" id="pedalboard-share-comment" class="form-control" placeholder="What's special about this pedalboard?"></textarea>
+                        </label>
+                    </div>
+                    <div id="share-window-wrapper">
+                        <div class="textcenter" id="record-step-1">
+                            <h2>Record a sample</h2>
+                            <span class="btn btn-danger" id="record-rec"><u></u></span>
+                            <p><small>(optional)</small><p>
+                        </div>
+                        <div class="controls mod-hidden" id="record-step-2">
+                            <div class="textcenter">
+                                <h2>Recording starts in</h2>
+                                <span class="btn btn-danger" id="record-countdown">3</span>
+                            </div>
+                        </div>
+                        <div class="textcenter mod-hidden" id="record-step-3">
+                            <h2>Recording</h2>
+                            <span class="btn btn-primary" id="record-stop">0:15</span>
+                            <p><small>(click the square to stop)</small><p>
+                        </div>
+                        <div class="textcenter mod-hidden" id="record-step-4">
+                            <br/>
+                            <button class="btn btn-info btn-large btn-block " id="record-play">
+                                <i class="icon-white icon-play"></i> Listen
+                            </button>
+                            <button class="btn btn-info btn-large btn-block active mod-hidden" id="record-play-stop" style="margin-top: 0">
+                                <i class="icon-white icon-stop"></i> Stop
+                            </button>
+                            <button class="btn btn-danger btn-large btn-block" id="record-again">
+                                <i class="icon-white icon-repeat"></i> Record again
+                            </button>
+                            <button class="btn btn-inverse btn-large btn-block" id="record-delete" style="color:black;background-color:#DDDDDD;">
+                                <i class="icon-white icon-remove"></i> Delete sample
+                            </button>
+                        </div>
+                        <div class="textleft mod-hidden" id="share-window-links">
+                            <small>&nbsp;</small>
+                            <h3>Upload completed!</h3>
+                            <div class="btn-group">
+                                <div class="tooltip top" role="tooltip" id="share-tooltip">
+                                    <div class="tooltip-arrow"></div>
+                                    <div class="tooltip-inner"></div>
+                                </div>
+                                <input class="share-url" value="" onmouseup="this.select()" readonly id="share-window-url" style="background-color:inherit;" />
+                            </div>
+                            <a class="btn btn-default btn-large btn-block" id="share-window-url-btn">
+                                Copy url to clipboard
+                            </a>
+                            <a class="btn btn-danger btn-large btn-block fb" target="_blank" href="#" id="share-window-fb">
+                                Share to Facebook <img src="img/icons/36/share-fb.png" alt=""/>
+                            </a>
+                            <a class="btn btn-inverse btn-large btn-block tw" target="_blank" href="#" id="share-window-tw">
+                                Share to Twitter <img src="img/icons/36/share-tw.png" alt=""/>
+                            </a>
+                            <a class="btn btn-inverse btn-large btn-block btn-warning" target="_blank" href="{{pedalboards_url}}" id="share-window-feed">
+                                Check out more pedalboards
+                            </a>
+                        </div>
+                    </div>
+                    <div id="share-window-bottom">
+                        <div id="share-wait-message">&nbsp;</div>
+                        <div class="textright">
+                            <button class="js-close btn btn-danger" id="record-cancel">Close</button>
+                            <button class="js-close btn btn-default btn-success" id="record-share" disabled="disabled">Just share</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END PEDALBOARD SHARE WINDOW -->
+
+        <!-- PEDALBOARD-ACTIONS -->
+        <header id="pedalboard-actions">
+
+            <!-- PEDALBOARD-SETTINGS -->
+            <div id="pedalboard-info">
+                <h1 class="top bottom {{titleblend}}">{{fulltitle}}</h1>
+                <div class="actions">
+                    <button class="js-cv-addressing" id="js-cv-addressing-toggle">Manage CV Ports</button>
+                    <div id="js-preset-menu" style="display:inline-block;">
+                        <button class="js-preset menu-trigger">Snapshots</button>
+                        <ul class="drop-menu clearfix js-pedalboard-presets-menu" style="cursor:pointer;text-align:left;">
+                            <li class="js-preset-save">Save</li>
+                            <li class="js-preset-save-as">Save as</li>
+                            <!--
+                            <li class="sub-menu-trigger">Load <span class="pull-right">&rsaquo;</span>
+                                <ul class="menu-preset-list sub-menu"></ul>
+                            </li>
+                            -->
+                            <li class="js-preset-manage">Load / Manage</li>
+                        </ul>
+                    </div>
+                    <button class="js-reset">New Pedalboard</button>
+                    <button class="js-save">Save</button>
+                    <button class="js-save-as">Save as</button>
+                    <button class="js-cloud mod-hidden">Share</button>
+                </div>
+            </div>
+            <!-- END PEDALBOARD-SETTINGS -->
+
+            <!-- ZOOM CONTROLLERS -->
+            <div id="zoom-controllers">
+                <span class="zoom-out"></span>
+                <span class="zoom-in"></span>
+            </div>
+            <!-- END ZOOM CONTROLLERS -->
+
+        </header>
+        <!-- END PEDALBOARD-ACTIONS -->
+
+        <!-- PEDALBOARD-DASHBOARD -->
+        <div id="pedalboard-dashboard" class="{{dev_api_class}}"></div>
+        <!-- END PEDALBOARD-DASHBOARD -->
+
+        <!-- MIDI DEVICE LIST WINDOW -->
+        <div id="midi-ports-window" class="save-popup mod-hidden">
+            <div class="mod-box" id="midi-ports-box">
+                <h1>MIDI Ports List</h1>
+                <form class="bottom">
+                    <fieldset>
+                        <div>
+                            <label>
+                                <input type="checkbox" autocomplete="off" id="midi-loopback">
+                                    Enable Virtual MIDI Loopback
+                                </input>
+                            </label>
+                        </div>
+                        <div>
+                            <label>
+                                <input type="radio" autocomplete="off" name="midi-mode" value="aggregated" id="midi-mode-aggregate">
+                                    Aggregated mode
+                                </input>
+                            </label>
+                        </div>
+                        <div>
+                            <label>
+                                <input type="radio" autocomplete="off" name="midi-mode" value="separated" id="midi-mode-separated">
+                                    Separated mode
+                                </input>
+                            </label>
+                        </div>
+                        <div class="controls clearfix" id="midi-ports-list"></div>
+                        <div class="controls actions">
+                            <button class="js-cancel btn btn-danger">Cancel</button>
+                            <button class="js-submit btn btn-success">Save</button>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+        </div>
+        <!-- MIDI DEVICE LIST WINDOW -->
+
+        <!-- PEDALBOARD SNAPSHOTS -->
+        <div id="pedal-presets-window" class="save-popup mod-hidden">
+            <div class="mod-box" style="width: 400px">
+                <h1 class="pull-left">Load / Manage snapshots</h1><span class="js-cancel close">&times;</span>
+                <form class="bottom">
+                    <div class="controls clearfix">
+                        <input type="text" name="pedal-presets-list" value="" id="pedal-presets-list-input"/>
+                        <select class="preset-list" size="9" id="pedal-presets-list"></select>
+                    </div>
+                    <div class="controls actions">
+                        <button class="js-rename btn btn-default">Rename</button>
+                        <button class="js-delete btn btn-danger">Delete</button>
+                        <!--<button class="js-assign btn btn-success">Assign selected&nbsp;</button>-->
+                        <button class="js-assign-all btn btn-warning">Assign all&nbsp;</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END PEDALBOARD SNAPSHOTS -->
+
+        <!-- CC DEVICE UPDATE WINDOW -->
+        <div id="cc-device-update-window" class="save-popup mod-hidden">
+            <div class="mod-box" style="width: 600px; margin:-150px -280px">
+                <h1 class="pull-left">Control Chain Device Update</h1><span class="js-cancel close">&times;</span>
+                <form class="bottom">
+                    <div class="clearfix"></div>
+                    <div id="cc-device-update-text">
+                        <p>
+                            Your Control Chain (CC) device firmware is ready to be updated.
+                        </p>
+                        <p>
+                            To continue, please follow these steps:
+                        </p>
+                        <ul>
+                            <li>Disconnect the CC device from the Control Chain port</li>
+                            <li>Hold down the first footswitch on the CC device</li>
+                            <li>While the first footswitch is held down, connect the CC device to your MOD device via USB</li>
+                            <li>Wait for the "update completed" message</li>
+                            <li>Disconnect the CC device from the USB port</li>
+                            <li>Connect the CC device to the Control Chain port once again</li>
+                        </ul>
+                        <p>
+                            Note: The update should only take a few seconds.
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END CC DEVICE UPDATE WINDOW -->
+
+    </div>
+    <!-- END PEDALBOARD -->
+
+    <!-- MAIN MENU-->
+    <div id="main-menu" class="mod-init-hidden">
+        <div id="mod-plugins" class="icon selected" data-message="Constructor"></div>
+        <div id="mod-pedalboard" class="icon" data-message="Pedalboards Library"></div>
+        <div id="mod-bank" class="icon" data-message="Banks"></div>
+        <div id="mod-file-manager" class="icon" data-message="File Manager"></div>
+        <div id="mod-cloud-plugins" class="icon" data-message="Plugin Store"></div>
+        <div id="banks-saving">Auto saving banks...</div>
+        <div id="mod-update" class="status icon"></div>
+        <div id="mod-status" class="status icon mod-hidden"></div>
+        <div id="mod-devices" class="status icon"></div>
+        <div id="mod-settings" class="status icon mod-settings" data-message="Go to settings screen"></div>
+        <div id="mod-ram" class="icon">
+            <div class="progress" id="ram-bar" style="width: 100%;">
+                <div class="bar"></div> <!-- not sure if this is needed -->
+            </div>
+            <p class="progress-title" id="ram-bar-text">ram</p>
+        </div>
+        <div id="mod-cpu" class="icon">
+            <div class="progress" id="cpu-bar" style="width: 100%;">
+                <div class="bar"></div> <!-- not sure if this is needed -->
+            </div>
+            <p class="progress-title" id="cpu-bar-text">cpu</p>
+        </div>
+        <div id="mod-cpu-stats" class="icon mod-hidden">0 GHz / 0 &deg;C</div>
+        <div id="mod-xruns" class="icon mod-hidden">0 Xruns</div>
+        <div id="mod-buffersize" class="icon mod-hidden">{{bufferSize}} frames</div>
+        <div id="mod-bypassRight" class="icon mod-bypass">Bypass 2</div>
+        <div id="mod-bypassLeft" class="icon mod-bypass">Bypass 1</div>
+        <div id="mod-show-midi-port" class="icon">MIDI Ports</div>
+        <div id="mod-transport-icon" class="icon">
+            <span>---.-- BPM</span>
+        </div>
+    </div>
+    <!-- END MAIN MENU-->
+
+    <!-- PLUGINS LIBRARY -->
+    <div id="plugins-library" class="js-main-library mod-init-hidden ignore-arrive">
+
+        <!-- EFFECTS MENU ITEMS -->
+        <ul class="clearfix js-category-tabs">
+            <li id="effect-tab-Favorites">Favorites <span class="count"></span></li>
+            <li id="effect-tab-All">All <span class="count"></span></li>
+            <li id="effect-tab-ControlVoltage">Control&nbsp;Voltage <span class="count"></span></li>
+            <li id="effect-tab-Delay">Delay <span class="count"></span></li>
+            <li id="effect-tab-Distortion">Distortion <span class="count"></span></li>
+            <li id="effect-tab-Dynamics">Dynamics <span class="count"></span></li>
+            <li id="effect-tab-Filter">Filter <span class="count"></span></li>
+            <li id="effect-tab-Generator">Generator <span class="count"></span></li>
+            <li id="effect-tab-MIDI">MIDI Utility <span class="count"></span></li>
+            <li id="effect-tab-Modulator">Modulator <span class="count"></span></li>
+            <li id="effect-tab-Reverb">Reverb <span class="count"></span></li>
+            <li id="effect-tab-Simulator">Simulator <span class="count"></span></li>
+            <li id="effect-tab-Spatial">Spatial <span class="count"></span></li>
+            <li id="effect-tab-Spectral">Spectral <span class="count"></span></li>
+            <li id="effect-tab-Utility">Utility <span class="count"></span></li>
+            <li id="effect-tab-MaxGen" style="display:none;">Max&nbsp;gen~ <span class="count"></span></li>
+            <li id="effect-tab-Camomile" style="display:none;">Camomile <span class="count"></span></li>
+        </ul>
+        <span class="js-settings-trigger settings selected"></span>
+        <span class="js-effects-fold fold"></span>
+        <!-- END EFFECTS MENU ITEMS -->
+
+        <!-- EFFECTS LIBRARY SETTINGS WINDOW -->
+        <div id="plugins-library-settings-window">
+            <form class="box form-inline">
+                <div class="form-group">
+                    <input id="effectSearch" class="form-control" placeholder="Keyword(s)" type="search" autocomplete="off" />
+                </div>
+            </form>
+        </div>
+        <!-- END EFFECTS LIBRARY SETTINGS WINDOW -->
+
+        <!-- EFFECTS OF A CATEGORY -->
+        <div id="plugins-list" class="js-effects-list">
+            <div class="nav nav-left"></div>
+            <div id="plugins-results">
+                <div id="plugin-results-wrapper">
+                    <div id="effect-content-Favorites" class="plugins-wrapper"></div>
+                    <div id="effect-content-All" class="plugins-wrapper"></div>
+                    <div id="effect-content-ControlVoltage" class="plugins-wrapper"></div>
+                    <div id="effect-content-Delay" class="plugins-wrapper"></div>
+                    <div id="effect-content-Distortion" class="plugins-wrapper"></div>
+                    <div id="effect-content-Dynamics" class="plugins-wrapper"></div>
+                    <div id="effect-content-Filter" class="plugins-wrapper"></div>
+                    <div id="effect-content-Generator" class="plugins-wrapper"></div>
+                    <div id="effect-content-MIDI" class="plugins-wrapper"></div>
+                    <div id="effect-content-Modulator" class="plugins-wrapper"></div>
+                    <div id="effect-content-Reverb" class="plugins-wrapper"></div>
+                    <div id="effect-content-Simulator" class="plugins-wrapper"></div>
+                    <div id="effect-content-Spatial" class="plugins-wrapper"></div>
+                    <div id="effect-content-Spectral" class="plugins-wrapper"></div>
+                    <div id="effect-content-Utility" class="plugins-wrapper"></div>
+                    <div id="effect-content-MaxGen" class="plugins-wrapper"></div>
+                    <div id="effect-content-Camomile" class="plugins-wrapper"></div>
+                </div>
+            </div>
+            <div class="nav nav-right"></div>
+        </div>
+        <!-- END EFFECTS OF A CATEGORY -->
+
+    </div>
+    <!-- END PLUGINS LIBRARY -->
+
+    <!-- CLOUD PLUGINS LIBRARY -->
+    <div id="cloud-plugins-library" class="mod-hidden mod-init-hidden">
+        <div>
+            <header>
+                <h1 class="bottom top">PLUGIN STORE</h1>
+                <button class="status icon mod-bypass" id="cloud_update_all">Update All</button>
+                <button class="status icon mod-bypass mod-hidden" id="cloud_install_all">Install All</button>
+            </header>
+
+            <div class="filter clearfix">
+                <h2>Filter</h2>
+                <div class="control-group">
+                    <input type="checkbox" name="installed" id="cloud-plugins-installed" />
+                    <label for="cloud-plugins-installed">Installed only</label>
+                </div>
+                <div class="control-group">
+                    <input type="checkbox" name="non-installed" id="cloud-plugins-non-installed" />
+                    <label for="cloud-plugins-non-installed">Non-Installed only</label>
+                </div>
+                <div class="control-group mod-hidden">
+                    <div class="switch" id="cloud-plugins-source">
+                      <input type="radio" id="cloud-radio-official" name="plugins-source" value="official" checked="checked">
+                      <label for="official">Official</label>
+                      <input type="radio" id="cloud-radio-labs" name="plugins-source" value="labs">
+                      <label for="labs">Labs</label>
+                      <span class="toggle-outside">
+                        <span class="toggle-inside"></span>
+                      </span>
+                    </div>
+                </div>
+                <ul class="categories list list-unstyled">
+                    <li id="cloud-plugin-tab-All">All</li>
+                    <li id="cloud-plugin-tab-ControlVoltage">Control&nbsp;Voltage</li>
+                    <li id="cloud-plugin-tab-Delay">Delay</li>
+                    <li id="cloud-plugin-tab-Distortion">Distortion</li>
+                    <li id="cloud-plugin-tab-Dynamics">Dynamics</li>
+                    <li id="cloud-plugin-tab-Filter">Filter</li>
+                    <li id="cloud-plugin-tab-Generator">Generator</li>
+                    <li id="cloud-plugin-tab-MIDI">MIDI Utility</li>
+                    <li id="cloud-plugin-tab-Modulator">Modulator</li>
+                    <li id="cloud-plugin-tab-Reverb">Reverb</li>
+                    <li id="cloud-plugin-tab-Simulator">Simulator</li>
+                    <li id="cloud-plugin-tab-Spatial">Spatial</li>
+                    <li id="cloud-plugin-tab-Spectral">Spectral</li>
+                    <li id="cloud-plugin-tab-Utility">Utility</li>
+                    <!-- <li id="cloud-plugin-tab-MaxGen">Max&nbsp;gen~</li> -->
+                    <!-- <li id="cloud-plugin-tab-Camomile">Camomile</li> -->
+                </ul>
+                <div class="form-group">
+                    <input class="form-control" placeholder="Filter by keyword(s)" type="search" autocomplete="off" />
+                </div>
+            </div>
+
+            <div class="cloud-plugins clearfix js-cloud-plugins">
+              <div id="cloudplugin-results-wrapper">
+				    <div class="featured-plugins">
+					  <h2>Featured plugins</h2>
+					  <div class="carousel"></div>
+					</div>
+					<h2>Filtered results</h2>
+                    <div id="cloud-plugin-content-All" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-ControlVoltage" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Delay" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Distortion" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Dynamics" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Filter" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Generator" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-MIDI" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Modulator" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Reverb" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Simulator" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Spatial" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Spectral" class="plugins-wrapper"></div>
+                    <div id="cloud-plugin-content-Utility" class="plugins-wrapper"></div>
+                    <!-- <div id="cloud-plugin-content-MaxGen" class="plugins-wrapper"></div> -->
+                    <!-- <div id="cloud-plugin-content-Camomile" class="plugins-wrapper"></div> -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- END CLOUD PLUGINS LIBRARY -->
+
+    <!-- PEDALBOARDS LIBRARY -->
+    <div id="pedalboards-library" class="mod-hidden mod-init-hidden">
+        <div class="box clearfix">
+            <header>
+                <h1 class="bottom top">
+                    Pedalboards Library
+                </h1>
+                <div class="form-group">
+                    <input id="searchPedalboard" class="form-control" maxlength="20" placeholder="Filter by keyword(s)" type="search" autocomplete="off" />
+                </div>
+                <a style="display:inline-block;float:right;color:#AAA;font-size:1.1em;margin-right:30px;"
+                   href="http://pedalboards.moddevices.com/" target="_blank">
+                    <img style="width: 1.2em; height: 1.2em; opacity: 0.6; vertical-align: middle;" src="img/icons/25/language.png" alt=""/>
+                    <span style="vertical-align: middle;">Browse Online Pedalboards</span>
+                </a>
+                <span class="view-modes">
+                  <i id="view-mode-grid" class="view-mode icon-th-1"></i>
+                  <i id="view-mode-list" class="view-mode icon-th-list"></i>
+                </span>
+            </header>
+            <div class="pedalboards clearfix">
+                <div class="clearfix">
+                    {% if factory_pedalboards %}
+                    <span class="separator-title">User Pedalboards</span>
+                    <div class="separator separator-user"></div>
+                    {% end %}
+                    <div class="js-pedalboards js-user-pedalboards"></div>
+                </div>
+                {% if factory_pedalboards %}
+                <div class="clearfix">
+                    <span class="separator-title">Factory Pedalboards</span>
+                    <div class="separator separator-factory"></div>
+                    <div class="js-pedalboards js-factory-pedalboards"></div>
+                </div>
+                {% end %}
+            </div>
+        </div>
+    </div>
+    <!-- END PEDALBOARDS LIBRARY -->
+
+    <!-- BANK LIBRARY -->
+    <div id="bank-library" class="mod-hidden mod-init-hidden"><div class="box">
+        <header>
+            <h1 class="bottom top">User Banks</h1>
+        </header>
+
+        <!-- BANK-LIST -->
+        <div id="bank-list">
+            <div class="add-bank" id="js-add-bank"><span class="icon-add"><i></i><b></b></span>Add Bank</div>
+            <span class="js-canvas"></span>
+        </div>
+        <!-- END BANK-LIST -->
+
+        <!-- BANK-PEDALBOARDS -->
+        <div id="bank-edit">
+            <div id="bank-title" class="mod-hidden">
+                <h1>Untitled</h1>
+            </div>
+            <div id="bank-pedalboards" class="grid-selected"></div>
+            <div id="bank-init" class="grid-selected" style="color:#ccc;margin-left:30px;">
+                {% if factory_pedalboards %}
+                <h2>
+                    This page is dedicated to user banks.<br>
+                    Factory banks are not displayed in this area.
+                </h2>
+                <p>
+                    To start using banks click on "Add Bank" on the left side,
+                    give it a name and then drag and drop pedalboards from the right side.
+                </p>
+                {% else %}
+                <h4>
+                    To start using banks click on "Add Bank" on the left side,
+                    give it a name and then drag and drop pedalboards from the right side.
+                </h4>
+                {% end %}
+            </div>
+        </div>
+        <!-- END BANK-PEDALBOARDS -->
+
+        <!-- BANK-PEDALBOARDS-SEARCH -->
+        <div id="bank-pedalboards-search"><div class="box">
+            <!-- FORM HORIZONTAL -->
+            <div class="filter clearfix">
+                <div class="clearfix">
+                    <div class="form-group">
+                        <label for="searchBank">Select pedalboards</label>
+                        <input id="searchBank" class="form-control" maxlength="20" placeholder="Filter by keyword(s)" type="search" autocomplete="off" />
+                    </div>
+                </div>
+            </div>
+            <!-- END FORM-HORIZONTAL -->
+
+            <!-- BANK-PEDALBOARDS-RESULT -->
+            <div id="bank-pedalboards-result">
+                <div class="clearfix">
+                    {% if factory_pedalboards %}
+                    <span class="separator-title">User Pedalboards</span>
+                    <div class="separator separator-user"></div>
+                    {% end %}
+                    <div class="js-canvas js-user-pedalboards"></div>
+                </div>
+                {% if factory_pedalboards %}
+                <div class="clearfix">
+                    <span class="separator-title">Factory Pedalboards</span>
+                    <div class="separator separator-factory"></div>
+                    <div class="js-canvas js-factory-pedalboards"></div>
+                </div>
+                {% end %}
+            </div>
+            <!-- END BANK-PEDALBOARDS-RESULT -->
+
+        </div></div>
+        <!-- END BANK-PEDALBOARDS-SEARCH -->
+
+    </div></div>
+    <!-- END BANK LIBRARY -->
+
+    <!-- FILE MANAGER -->
+    <div id="file-manager-library" class="mod-hidden mod-init-hidden"><div class="box">
+        <header>
+            <h1 class="bottom top">File Manager</h1>
+        </header>
+        <div id="file-manager-wrapper">
+            <iframe title="File Manager" allowtransparency="true"></iframe>
+        </div>
+    </div></div>
+    <!-- END FILE MANAGER -->
+
+    <!-- MOD UPDATE/UPGRADE TOOLTIP -->
+    <div class="tooltip mod-hidden" style="right:102px;">
+        <div class="arrow"></div>
+        <div class="text">New updates are available. Click to learn more.</div>
+    </div>
+    <!-- END MOD UPDATE/UPGRADE TOOLTIP -->
+
+    <!-- MOD UPDATE/UPGRADE BOX -->
+    <div id="mod-upgrade" class="mod-hidden">
+        <div class="box">
+            <div class="download-progress mod-hidden">
+                <div class="download-start">Downloading...</div>
+                <div class="download-complete">Download complete</div>
+                <div class="progressbar-wrapper">
+                    <div class="progressbar"></div>
+                </div>
+                <p><br/></p>
+            </div>
+            <div class="mod-upgrade-details">
+                <p>
+                    Update version <b>0.0.0</b>.<br/>
+                    Released on 0000-00-00.
+                </p>
+                <p>
+                    Curious about this release? Check out
+                    <a href="#" target="_blank">this forum post</a>
+                    where you can read more details and discuss with our community.
+                </p>
+                <p class="textright">
+                    <button class="js-close btn btn-xs btn-danger">Cancel</button>
+                    <button class="js-upgrade btn btn-xs btn-info">Download</button>
+                </p>
+            </div>
+        </div>
+    </div>
+    <!-- END MOD UPDATE/UPGRADE BOX -->
+
+    <!-- CONTROL CHAIN DEVICES BOX -->
+    <div id="mod-devices-window" class="mod-hidden">
+        <div class="box">
+            <div class="mod-devices-window-list">
+                <header><h4>Control Chain Devices</h4></header>
+                <ul></ul>
+            </div>
+        </div>
+    </div>
+    <!-- END CONTROL CHAIN DEVICES BOX -->
+
+    <!-- TRANSPORT BOX -->
+    <div id="mod-transport-window" class="mod-pedal-settings mod-hidden">
+        <div class="mod-controls clearfix">
+            <div class="mod-control-group clearfix">
+                <div class="mod-enumerated" id="mod-enum-transport-sync-mode">
+                    <span class="mod-enumerated-title">Sync Mode</span>
+                    <div class="mod-enumerated-list">
+                        <div mod-sync-mode="none">Internal</div>
+                        <div class="mod-midi-icon" mod-sync-mode="midi_clock_slave">
+                          MIDI
+                        </div>
+                        <div mod-sync-mode="link">Ableton&trade; Link</div>
+                    </div>
+                </div>
+
+                <div class="mod-knob" id="mod-knob-transport-bpm">
+                    <span class="mod-knob-title">Beats Per Minute</span>
+                    <span class="mod-knob-min-value">20 BPM</span>
+                    <span class="mod-knob-max-value">280 BPM</span>
+                    <span class="mod-knob-current-value">---.-- BPM</span>
+                    <div class="mod-knob-image" mod-widget="film"></div>
+                    <div class="mod-address"></div>
+                </div>
+
+                <div class="mod-knob" id="mod-knob-transport-bpb">
+                    <span class="mod-knob-title">Beats Per Bar</span>
+                    <span class="mod-knob-min-value">1/4</span>
+                    <span class="mod-knob-max-value">16/4</span>
+                    <span class="mod-knob-current-value">-/4</span>
+                    <div class="mod-knob-image" mod-widget="film"></div>
+                    <div class="mod-address"></div>
+                </div>
+
+                <div class="mod-switch" id="mod-switch-transport-play">
+                    <span class="mod-switch-title">Transport</span>
+                    <div class="mod-switch-image stop" mod-widget="switch"></div>
+                    <div class="mod-switch-image play" mod-widget="switch"></div>
+                    <div class="mod-address"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- TRANSPORT BOX -->
+
+<!-- END WRAPPER -->
+</div>
+
+</body>
+<!-- END BODY -->
+
+</html>

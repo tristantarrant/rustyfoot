@@ -1,0 +1,28 @@
+[Unit]
+Description=Rustyfoot - MOD Audio Web UI
+After=network.target jackd-modhost.service
+Wants=jackd-modhost.service
+
+[Service]
+Type=simple
+Environment=MOD_HTML_DIR=/usr/share/rustyfoot/html
+Environment=MOD_UI_DIR=/usr/share/rustyfoot
+Environment=MOD_DATA_DIR=/var/lib/rustyfoot
+Environment=MOD_USER_FILES_DIR=/var/lib/rustyfoot/user-files
+Environment=MOD_USER_PLUGINS_DIR=/var/lib/rustyfoot/plugins
+Environment=MOD_USER_PEDALBOARDS_DIR=/var/lib/rustyfoot/pedalboards
+Environment=MOD_KEYS_PATH=/var/lib/rustyfoot/keys/
+Environment=HOME=/var/lib/rustyfoot
+Environment=XDG_CONFIG_HOME=/var/lib/rustyfoot/.config
+Environment=XDG_DATA_HOME=/var/lib/rustyfoot/.local/share
+Environment=XDG_CACHE_HOME=/var/cache/rustyfoot
+Environment=LV2_PATH=/var/lib/rustyfoot/plugins:/usr/lib/lv2:/usr/local/lib/lv2
+Environment=LD_LIBRARY_PATH=/usr/lib/rustyfoot
+Environment=RUST_LOG=info
+User=modhost
+ExecStart=/usr/bin/rustyfoot
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

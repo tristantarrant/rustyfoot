@@ -1,0 +1,210 @@
+#pedalboards-library {
+  background: #2c2c2c;
+  bottom: 45px;
+  left: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  h1 {
+    color: #fff;
+    display: inline-block;
+    font-size: 24px;
+    line-height: 35px;
+    margin: 0 0 18px 0;
+    padding: 0;
+  }
+  header {
+    .form-group {
+      display: inline-block;
+      float: right;
+      margin-top: 5px;
+      margin-right: 5px;
+      .form-control {
+        width: 200px !important;
+      }
+      .input-clean {
+        line-height: 20px;
+        margin-right: 12px !important;
+      }
+    }
+    .view-modes {
+      float: right;
+      margin-right: 12px;
+      cursor: pointer;
+
+      .view-mode {
+        font-size: 130%;
+
+        &.selected {
+          color: #fff;
+        }
+      }
+    }
+  }
+  .filter {
+    border-color: #111;
+    border-style: dotted;
+    border-width: 0 1px 0 0;
+    bottom: 45px;
+    left: 0;
+    position: fixed;
+    right: 0;
+    top: 45px;
+    width: 240px;
+    .control-group {
+      float: left;
+      margin-right: 9px;
+    }
+    .control-group label {
+      color: #fff;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: bold;
+      width: 165px;
+    }
+    .control-group select {
+      width: 50px;
+    }
+  }
+  .pedalboards {
+    left: 0px;
+    position: fixed;
+    right: 0px;
+    top: 45px;
+    bottom: 45px;
+    overflow: auto;
+    background: #111 url(../img/watermark.png) 100% 100% no-repeat;
+    padding-top: 1%;
+
+    .pedalboard {
+      color: #fff;
+      float: left;
+      margin: 0 0 1% 1%;
+      width: 18.8%;
+      position: relative;
+      background-color: transparent;
+      background-image: url(../img/background.jpg);
+      background-position: center center;
+      background-repeat: repeat;
+      background-size: auto 100%;
+      transition: all 0.33s;
+      cursor: pointer;
+
+      &:hover {
+        .info {
+          background-color: @brand-primary;
+        }
+      }
+      .img {
+        box-shadow: inset 0 3px 6px black;
+        border: 1px solid #000;
+        display: block;
+        width: 100%;
+        height: 10vw;
+        overflow: hidden;
+        text-align: center;
+        background-image: url(../img/loading-pedalboard.gif);
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: auto;
+        position: relative;
+        &.loaded {
+            background-size: contain;
+        }
+        &.broken {
+            background-image: url(../img/icons/broken_image.svg);
+            background-size: auto 50%;
+        }
+      }
+      &.broken {
+        .img::after  {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 10;
+          background-color: rgba(17, 17, 17, 0.5);
+          background-image: url(../img/icons/broken_pedal.svg);
+          background-size: auto 50%;
+          background-repeat: no-repeat;
+          background-position: center;
+        }
+      }
+      .info {
+        background-color: #2c2c2c;
+        transition: background-color 0.33s;
+      }
+      .title {
+        display: block;
+        line-height: 32px;
+        font-weight: bold;
+        overflow: hidden;
+        position: relative;
+        height: 32px;
+        left: 5px;
+        width: calc(~'100% - 32px');
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .description {
+        display: block;
+        font-size: 12px;
+        height: 36px;
+        line-height: 1.5;
+        overflow: hidden;
+      }
+      .actions {
+        font-weight: bold;
+        text-transform: uppercase;
+        position: absolute;
+        top: 0;
+        right: 0;
+        .js-remove {
+          width: 32px;
+          height: 32px;
+          background-image: url(../img/icons/25/delete.png);
+          background-repeat: no-repeat;
+          background-position: 50% 50%;
+          transition: background-color 0.33s;
+          &:hover {
+            background-color: @brand-warning;
+          }
+        }
+        .js-rename {
+          width: 32px;
+          height: 32px;
+          background-image: url(../img/icons/25/rename.png);
+          background-repeat: no-repeat;
+          background-position: 50% 50%;
+          transition: background-color 0.33s;
+          &:hover {
+            background-color: @brand-primary;
+          }
+        }
+      }
+      .actions > span {
+        cursor: pointer;
+        &:hover {
+          text-decoration: underline;
+        }
+        &.duplicate {
+          margin: 0 6px;
+        }
+      }
+    }
+
+    &.list-selected {
+      .pedalboard {
+        // width: 98%;
+      }
+      .img {
+        display: none;
+      }
+    }
+  }
+}

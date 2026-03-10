@@ -1,0 +1,40 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        mkdir -p /var/lib/rustyfoot/user-files
+        mkdir -p /var/lib/rustyfoot/plugins
+        mkdir -p /var/lib/rustyfoot/pedalboards
+        mkdir -p /var/lib/rustyfoot/keys
+        mkdir -p /var/lib/rustyfoot/.config
+        mkdir -p /var/lib/rustyfoot/.local/share
+        # Well-known user file directories for LV2 plugin file parameters
+        mkdir -p "/var/lib/rustyfoot/user-files/Audio Loops"
+        mkdir -p "/var/lib/rustyfoot/user-files/Audio Recordings"
+        mkdir -p "/var/lib/rustyfoot/user-files/Audio Samples"
+        mkdir -p "/var/lib/rustyfoot/user-files/Audio Tracks"
+        mkdir -p "/var/lib/rustyfoot/user-files/Speaker Cabinets IRs"
+        mkdir -p "/var/lib/rustyfoot/user-files/Hydrogen Drumkits"
+        mkdir -p "/var/lib/rustyfoot/user-files/Reverb IRs"
+        mkdir -p "/var/lib/rustyfoot/user-files/MIDI Clips"
+        mkdir -p "/var/lib/rustyfoot/user-files/MIDI Songs"
+        mkdir -p "/var/lib/rustyfoot/user-files/SF2 Instruments"
+        mkdir -p "/var/lib/rustyfoot/user-files/SFZ Instruments"
+        mkdir -p "/var/lib/rustyfoot/user-files/Aida DSP Models"
+        mkdir -p "/var/lib/rustyfoot/user-files/NAM Models"
+        # Install default pedalboard if not present
+        if [ ! -d /var/lib/rustyfoot/pedalboards/default.pedalboard ]; then
+            cp -a /usr/share/rustyfoot/default.pedalboard /var/lib/rustyfoot/pedalboards/
+        fi
+        # Cache directory for shader cache etc.
+        mkdir -p /var/cache/rustyfoot
+        chown modhost:modhost /var/cache/rustyfoot
+        # Set ownership so modhost user can write data
+        chown -R modhost:modhost /var/lib/rustyfoot
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

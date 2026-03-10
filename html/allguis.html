@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MOD</title>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css" href="css/main.css"/>
+    <link rel="stylesheet" type="text/css" href="css/dashboard.css"/>
+    <link rel="stylesheet" type="text/css" href="css/fonts.css"/>
+
+    <!-- PEDALS -->
+    <link rel="stylesheet" type="text/css" href="css/pedals.css"/>
+
+    <!-- DEFAULT -->
+    <link rel="stylesheet" type="text/css" href="resources/pedals/default.css"/>
+
+    <script type="text/javascript" src="js/lib/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="js/lib/jquery-ui-1.10.1.custom.min.js"></script>
+    <script type="text/javascript" src="js/lib/jquery.ui.touch-punch.min.js"></script>
+    <script type="text/javascript" src="js/lib/mustache.js"></script>
+    <script type="text/javascript" src="js/lib/jquery.svg.js"></script>
+    <script type="text/javascript" src="js/lib/sprintf-0.6.js"></script>
+    <script type="text/javascript" src="js/lib/jquery.mousewheel.min.js"></script>
+
+    <script type="text/javascript">
+      var desktop    = null
+      var SAMPLERATE = 48000
+      var VERSION    = '{{version}}'
+      var options    = {
+          bypassed: 0,
+      }
+
+      $(document).ready(function() {
+          $.ajax({
+              method: 'get',
+              url: '/effect/list',
+              success: function(plugins) {
+                  for (var i in plugins) {
+                      $.ajax({
+                          method: 'get',
+                          url: '/effect/get',
+                          data: { uri: plugins[i].uri },
+                          success: function(plugin) {
+                              if (! plugin.gui.iconTemplate) {
+                                  return
+                              }
+                              console.log(plugin.uri)
+                              new GUI(plugin, options).render(null, function(icon) {
+                                $('#pedalboard-dashboard').append(icon)
+                              })
+                          },
+                          error: function() {
+                              // ignored
+                          },
+                          cache: false,
+                          dataType: 'json'
+                      })
+                  }
+              },
+              error: function(resp) {
+                  alert("Error: Can't get plugin list.")
+              },
+              cache: false,
+              dataType: 'json'
+          })
+          $("html").css({overflow: "visible"})
+          $("body").css({overflow: "visible"})
+          $("#wrapper").css({overflow: "visible"})
+      })
+    </script>
+
+    <style type="text/css" media="screen">
+    body {
+        background: transparent;
+    }
+    body, div {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+        user-select: none;
+    }
+    #wrapper {
+        overflow: hidden;
+    }
+    #pedalboard-dashboard {
+        top: 0px;
+        background: transparent;
+    }
+    </style>
+    </style>
+
+    <script type="text/javascript" src="js/common.js"></script>
+    <script type="text/javascript" src="js/modgui.js"></script>
+
+</head>
+<body>
+    <!-- WRAPPER -->
+    <div id="wrapper">
+        <!-- PEDALBOARD -->
+        <div id="pedalboard">
+            <!-- PEDALBOARD-DASHBOARD -->
+            <div id="pedalboard-dashboard"></div>
+            <!-- END PEDALBOARD-DASHBOARD -->
+        </div>
+        <!-- END PEDALBOARD -->
+    </div>
+    <!-- END WRAPPER -->
+
+</body>
+</html>
