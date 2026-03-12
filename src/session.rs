@@ -581,6 +581,9 @@ impl Session {
             .schedule_screenshot(std::path::Path::new(&bundlepath));
         self.screenshot_needed = false;
 
+        // Notify HMI to reload pedalboard list
+        self.hmi.send(crate::mod_protocol::CMD_PEDALBOARD_RELOAD_LIST, None, "boolean");
+
         (true, bundlepath, new_title)
     }
 

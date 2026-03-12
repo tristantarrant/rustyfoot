@@ -135,7 +135,7 @@ pub async fn pedalboard_info(
 #[get("/pedalboard/remove")]
 pub async fn pedalboard_remove(
     query: web::Query<BundleQuery>,
-    _state: web::Data<AppState>,
+    state: web::Data<AppState>,
 ) -> HttpResponse {
     let bundlepath = query.bundlepath.as_deref().unwrap_or("");
     if bundlepath.is_empty() {
@@ -152,6 +152,10 @@ pub async fn pedalboard_remove(
         }
         // Reset cache
         lv2_utils::reset_get_all_pedalboards_cache(lv2_utils::PEDALBOARD_INFO_USER_ONLY);
+
+        // Notify HMI to reload pedalboard list
+        let session = state.session.read().await;
+        session.hmi.send(crate::mod_protocol::CMD_PEDALBOARD_RELOAD_LIST, None, "boolean");
     }
 
     HttpResponse::Ok()

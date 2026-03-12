@@ -169,6 +169,7 @@ pub const CMD_PEDALBOARD_SAVE: &str = "ps";
 pub const CMD_PEDALBOARD_SAVE_AS: &str = "psa";
 pub const CMD_PEDALBOARD_CLEAR: &str = "pcl";
 pub const CMD_PEDALBOARD_DELETE: &str = "pbd";
+pub const CMD_PEDALBOARD_RELOAD_LIST: &str = "prl";
 pub const CMD_REORDER_SSS_IN_PB: &str = "sr";
 pub const CMD_SNAPSHOTS: &str = "ssg";
 pub const CMD_SNAPSHOT_NAME_SET: &str = "sn";
