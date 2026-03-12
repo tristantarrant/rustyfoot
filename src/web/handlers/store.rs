@@ -395,7 +395,13 @@ pub async fn tone3000_auth_start(
         .get("host")
         .and_then(|h| h.to_str().ok())
         .unwrap_or("localhost:8888");
-    let scheme = if host.starts_with("localhost") || host.starts_with("127.") { "http" } else { "https" };
+    let hostname = host.split(':').next().unwrap_or(host);
+    let scheme = if hostname == "localhost"
+        || hostname.starts_with("127.")
+        || hostname.starts_with("10.")
+        || hostname.starts_with("192.168.")
+        || hostname.starts_with("172.")
+    { "http" } else { "https" };
     let callback_url = format!("{}://{}/store/tone3000/auth/callback", scheme, host);
     let encoded = urlencoding::encode(&callback_url);
 
