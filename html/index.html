@@ -4,7 +4,7 @@
 <!-- HEAD -->
 <head>
 <meta charset="UTF-8">
-<title>MOD</title>
+<title>Pedalboard</title>
 
 <link rel="apple-touch-icon" sizes="57x57" href="img/favicon/apple-icon-57x57.png">
 <link rel="apple-touch-icon" sizes="60x60" href="img/favicon/apple-icon-60x60.png">
@@ -41,6 +41,8 @@
     .loadinganim path { stroke:#883996; stroke-width:4; stroke-linecap:butt; }
     .loadingcircle { animation: loadingcircle 0.5s linear infinite; }
     @keyframes loadingcircle { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
+    .store-panel { min-height: 100%; }
+    #cloud-plugins-library > div > .filter { overflow-x: hidden; }
 </style>
 
 <script type="text/javascript" src="js/lib/jquery-1.9.1.min.js?v={{version}}"></script>
@@ -176,7 +178,7 @@ $('document').ready(function() {
         // hide stuff that is only relevant to MOD Devices
         $('#mod-bypassLeft').hide()
         $('#mod-bypassRight').hide()
-        $('#mod-cloud-plugins').hide()
+        $('#mod-cloud-plugins').show()
         $('#mod-update').hide()
         $('#pedalboard-info').find('.js-cloud').hide()
 
@@ -192,6 +194,7 @@ $('document').ready(function() {
         $("#cloud-plugins-source").parent().show()
     }
     desktop.pedalboardBox.pedalboardBox('initViewMode', PREFERENCES['pb-view-mode'])
+    tone3000.init()
 
     // Apply background preference
     if (PREFERENCES['background'] && PREFERENCES['background'] !== 'default') {
@@ -302,6 +305,7 @@ $('document').ready(function() {
 <script type="text/javascript" src="js/banks.js?v={{version}}"></script>
 <script type="text/javascript" src="js/effects.js?v={{version}}"></script>
 <script type="text/javascript" src="js/cloudplugin.js?v={{version}}"></script>
+<script type="text/javascript" src="js/tone3000.js?v={{version}}"></script>
 <script type="text/javascript" src="js/mididevices.js?v={{version}}"></script>
 <script type="text/javascript" src="js/snapshot.js?v={{version}}"></script>
 <script type="text/javascript" src="js/hardware.js?v={{version}}"></script>
@@ -374,7 +378,7 @@ $('document').ready(function() {
 <div id="mod-cloud-terms" class="save-popup mod-hidden">
     <div class="mod-box">
         {% if using_desktop == 'true' %}
-        <h1>Welcome to MOD Desktop!</h1>
+        <h1>Welcome!</h1>
         <div>
             <p>
                 We're thrilled to have you on board and can't wait for you to explore all the amazing features we've built for you.
@@ -385,18 +389,18 @@ $('document').ready(function() {
                 <a href="/desktop-pp.html" target="_blank">Privacy Policy</a>.
                 They outline how we work together, use your data, and protect your privacy – ensuring a safe and enjoyable experience for everyone.<br/>
                 So, take a quick moment to review these documents.
-                Once you're all set, the world of MOD is yours to explore.
+                Once you're all set, the world of audio effects is yours to explore.
                 Happy modding!<br/>
             </p>
         </div>
         {% else %}
-        <h1 class="pull-left">Terms of Use for MOD online components</h1>
+        <h1 class="pull-left">Terms of Use for online components</h1>
         <span class="js-reject close">&times;</span>
         <div class="bottom">
             <div class="clearfix"></div>
             <p>
                 (NOTE: THIS AN EXAMPLE TEXT YET TO BE REVIEWED)<br/>
-                Your MOD unit can receive firmware updates over the internet, and also download new plugins and pedalboards.<br/>
+                Your device can receive firmware updates over the internet, and also download new plugins and pedalboards.<br/>
                 The use of these online services is under Terms of Use and Privacy Policy in order to comply with different regulatory laws across the globe.<br/>
             </p>
             <p>
@@ -404,7 +408,7 @@ $('document').ready(function() {
                 <a href="/desktop-tou.html" target="_blank">Terms of Use</a>
                 and
                 <a href="/desktop-pp.html" target="_blank">Privacy Policy</a> before continuing.<br/>
-                While you can freely use your MOD unit without accepting these terms, you must agree to them in order to enable or perform any online interaction.
+                While you can freely use your device without accepting these terms, you must agree to them in order to enable or perform any online interaction.
             </p>
         </div>
         {% end %}
@@ -477,7 +481,7 @@ $('document').ready(function() {
             <div class="box">
                 <h1 class="pull-left">SHARE</h1><span class="js-cancel close">&times;</span>
                 <div class="unstable-warning mod-hidden">
-                  <b>Warning:</b> This pedalboard contains MOD Labs plugins and won't be available to most users
+                  <b>Warning:</b> This pedalboard contains community plugins and may not be available to most users
                 </div>
                 <form>
                     <div class="clearfix"></div>
@@ -690,7 +694,7 @@ $('document').ready(function() {
                         <ul>
                             <li>Disconnect the CC device from the Control Chain port</li>
                             <li>Hold down the first footswitch on the CC device</li>
-                            <li>While the first footswitch is held down, connect the CC device to your MOD device via USB</li>
+                            <li>While the first footswitch is held down, connect the CC device to your device via USB</li>
                             <li>Wait for the "update completed" message</li>
                             <li>Disconnect the CC device from the USB port</li>
                             <li>Connect the CC device to the Control Chain port once again</li>
@@ -811,88 +815,86 @@ $('document').ready(function() {
     </div>
     <!-- END PLUGINS LIBRARY -->
 
-    <!-- CLOUD PLUGINS LIBRARY -->
+    <!-- CLOUD PLUGINS LIBRARY / STORE -->
     <div id="cloud-plugins-library" class="mod-hidden mod-init-hidden">
         <div>
             <header>
-                <h1 class="bottom top">PLUGIN STORE</h1>
+                <h1 class="bottom top">STORE</h1>
                 <button class="status icon mod-bypass" id="cloud_update_all">Update All</button>
                 <button class="status icon mod-bypass mod-hidden" id="cloud_install_all">Install All</button>
             </header>
 
             <div class="filter clearfix">
-                <h2>Filter</h2>
-                <div class="control-group">
-                    <input type="checkbox" name="installed" id="cloud-plugins-installed" />
-                    <label for="cloud-plugins-installed">Installed only</label>
-                </div>
-                <div class="control-group">
-                    <input type="checkbox" name="non-installed" id="cloud-plugins-non-installed" />
-                    <label for="cloud-plugins-non-installed">Non-Installed only</label>
-                </div>
-                <div class="control-group mod-hidden">
-                    <div class="switch" id="cloud-plugins-source">
-                      <input type="radio" id="cloud-radio-official" name="plugins-source" value="official" checked="checked">
-                      <label for="official">Official</label>
-                      <input type="radio" id="cloud-radio-labs" name="plugins-source" value="labs">
-                      <label for="labs">Labs</label>
-                      <span class="toggle-outside">
-                        <span class="toggle-inside"></span>
-                      </span>
+                <h2>Source</h2>
+                <select id="store-source-select" class="form-control" style="margin:5px 10px 10px;width:auto;max-width:calc(100% - 20px);box-sizing:border-box;">
+                    <option value="patchstorage">LV2 Plugins</option>
+                    <option value="tone3000">NAM Models &amp; IRs</option>
+                </select>
+
+                <!-- Patchstorage filter options -->
+                <div id="store-filter-patchstorage">
+                    <h2>Filter</h2>
+                    <ul class="categories list list-unstyled">
+                        <li id="cloud-plugin-tab-All">All</li>
+                        <li id="cloud-plugin-tab-Effect">Effect</li>
+                        <li id="cloud-plugin-tab-Utility">Utility</li>
+                        <li id="cloud-plugin-tab-Synthesizer">Synthesizer</li>
+                    </ul>
+                    <div class="form-group">
+                        <input class="form-control" placeholder="Filter by keyword(s)" type="search" autocomplete="off"/>
                     </div>
                 </div>
-                <ul class="categories list list-unstyled">
-                    <li id="cloud-plugin-tab-All">All</li>
-                    <li id="cloud-plugin-tab-ControlVoltage">Control&nbsp;Voltage</li>
-                    <li id="cloud-plugin-tab-Delay">Delay</li>
-                    <li id="cloud-plugin-tab-Distortion">Distortion</li>
-                    <li id="cloud-plugin-tab-Dynamics">Dynamics</li>
-                    <li id="cloud-plugin-tab-Filter">Filter</li>
-                    <li id="cloud-plugin-tab-Generator">Generator</li>
-                    <li id="cloud-plugin-tab-MIDI">MIDI Utility</li>
-                    <li id="cloud-plugin-tab-Modulator">Modulator</li>
-                    <li id="cloud-plugin-tab-Reverb">Reverb</li>
-                    <li id="cloud-plugin-tab-Simulator">Simulator</li>
-                    <li id="cloud-plugin-tab-Spatial">Spatial</li>
-                    <li id="cloud-plugin-tab-Spectral">Spectral</li>
-                    <li id="cloud-plugin-tab-Utility">Utility</li>
-                    <!-- <li id="cloud-plugin-tab-MaxGen">Max&nbsp;gen~</li> -->
-                    <!-- <li id="cloud-plugin-tab-Camomile">Camomile</li> -->
-                </ul>
-                <div class="form-group">
-                    <input class="form-control" placeholder="Filter by keyword(s)" type="search" autocomplete="off" />
+
+                <!-- Tone3000 filter options -->
+                <div id="store-filter-tone3000" style="display:none;">
+                    <div id="tone3000-auth-sidebar" style="text-align:center;padding:15px 10px;">
+                        <p style="color:#999;font-size:12px;margin:0 0 10px;">
+                            Connect your <a href="https://tone3000.com" target="_blank" style="color:#7af;">Tone3000</a> account to browse models.
+                        </p>
+                        <button id="tone3000-connect-btn" class="btn btn-mini">Connect Account</button>
+                    </div>
+                    <div id="tone3000-filter-categories" style="display:none;">
+                        <h2>Filter</h2>
+                        <ul class="categories list list-unstyled" id="tone3000-categories">
+                            <li id="tone3000-tab-All" class="selected">All</li>
+                            <li id="tone3000-tab-amp">Amp Heads</li>
+                            <li id="tone3000-tab-full-rig">Full Rig</li>
+                            <li id="tone3000-tab-pedal">Pedals</li>
+                            <li id="tone3000-tab-outboard">Outboard</li>
+                            <li id="tone3000-tab-ir">Impulse Responses</li>
+                        </ul>
+                        <div class="form-group">
+                            <input class="form-control" id="tone3000-search" placeholder="Search models..." type="search" autocomplete="off"/>
+                        </div>
+                        <div style="padding:10px 0;text-align:center;">
+                            <button id="tone3000-disconnect-btn" class="btn btn-mini" style="color:#999;">Disconnect</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="cloud-plugins clearfix js-cloud-plugins">
-              <div id="cloudplugin-results-wrapper">
-				    <div class="featured-plugins">
-					  <h2>Featured plugins</h2>
-					  <div class="carousel"></div>
-					</div>
-					<h2>Filtered results</h2>
-                    <div id="cloud-plugin-content-All" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-ControlVoltage" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Delay" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Distortion" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Dynamics" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Filter" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Generator" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-MIDI" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Modulator" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Reverb" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Simulator" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Spatial" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Spectral" class="plugins-wrapper"></div>
-                    <div id="cloud-plugin-content-Utility" class="plugins-wrapper"></div>
-                    <!-- <div id="cloud-plugin-content-MaxGen" class="plugins-wrapper"></div> -->
-                    <!-- <div id="cloud-plugin-content-Camomile" class="plugins-wrapper"></div> -->
+            <!-- Patchstorage results -->
+            <div id="store-panel-patchstorage" class="store-panel">
+                <div class="cloud-plugins clearfix js-cloud-plugins">
+                    <div id="cloudplugin-results-wrapper">
+                        <div id="cloud-plugin-content-All" class="plugins-wrapper"></div>
+                        <div id="cloud-plugin-content-Effect" class="plugins-wrapper"></div>
+                        <div id="cloud-plugin-content-Utility" class="plugins-wrapper"></div>
+                        <div id="cloud-plugin-content-Synthesizer" class="plugins-wrapper"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tone3000 results -->
+            <div id="store-panel-tone3000" class="store-panel" style="display:none;">
+                <div class="cloud-plugins clearfix" id="tone3000-results">
+                    <div id="tone3000-content" style="width:100%;"></div>
                 </div>
             </div>
 
         </div>
     </div>
-    <!-- END CLOUD PLUGINS LIBRARY -->
+    <!-- END CLOUD PLUGINS LIBRARY / STORE -->
 
     <!-- PEDALBOARDS LIBRARY -->
     <div id="pedalboards-library" class="mod-hidden mod-init-hidden">
@@ -905,7 +907,7 @@ $('document').ready(function() {
                     <input id="searchPedalboard" class="form-control" maxlength="20" placeholder="Filter by keyword(s)" type="search" autocomplete="off" />
                 </div>
                 <a style="display:inline-block;float:right;color:#AAA;font-size:1.1em;margin-right:30px;"
-                   href="http://pedalboards.moddevices.com/" target="_blank">
+                   href="#" target="_blank" style="display:none">
                     <img style="width: 1.2em; height: 1.2em; opacity: 0.6; vertical-align: middle;" src="img/icons/25/language.png" alt=""/>
                     <span style="vertical-align: middle;">Browse Online Pedalboards</span>
                 </a>

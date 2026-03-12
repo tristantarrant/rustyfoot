@@ -12,6 +12,34 @@ function getDummyPluginData() {
     })
 }
 
+// Map a StoreItem from /store/{source}/search to a plugin-like object
+function mapStoreItem(item) {
+    var cat = (item.categories && item.categories.length > 0) ? item.categories : ['Utility']
+    return {
+        uri: item.url || ('store:patchstorage:' + item.id),
+        store_id: item.id,
+        store_source: 'patchstorage',
+        label: item.title,
+        name: item.title,
+        brand: item.author || 'Unknown',
+        author: { name: item.author || 'Unknown', homepage: item.url || '' },
+        comment: item.description || '',
+        category: cat,
+        screenshot_href: item.thumbnail_url || '/resources/pedals/default-screenshot.png',
+        thumbnail_href: item.thumbnail_url || '/resources/pedals/default-thumbnail.png',
+        status: 'blocked',
+        installedVersion: null,
+        latestVersion: [0, 0, 0, 1],
+        bundle_id: null,
+        bundle_name: null,
+        bundles: [],
+        ports: { control: { input: [] }, cv: { input: [], output: [] } },
+        gui: false,
+        buildEnvironment: null,
+        stable: true,
+    }
+}
+
 JqueryClass('cloudPluginBox', {
     init: function (options) {
         var self = $(this)
@@ -46,6 +74,9 @@ JqueryClass('cloudPluginBox', {
         searchbox.cleanableInput()
 
         self.data('category', null)
+        self.data('storePage', 1)
+        self.data('storeTotalPages', 1)
+        self.data('storeTotal', 0)
         self.cloudPluginBox('setCategory', "All")
 
         self.data('usingLabs', self.find('input:radio[name=plugins-source]:checked').val() === 'labs')
@@ -128,9 +159,11 @@ JqueryClass('cloudPluginBox', {
         self.data('results', results)
 
         self.data('firstLoad', true)
+        self.data('categoryCounts', null)
         self.find('ul.categories li').click(function () {
             var category = $(this).attr('id').replace(/^cloud-plugin-tab-/, '')
             self.cloudPluginBox('setCategory', category)
+            self.cloudPluginBox('search')
         })
 
         options.open = function () {
@@ -156,13 +189,11 @@ JqueryClass('cloudPluginBox', {
         self.find('#cloud-plugin-tab-' + category).addClass('selected')
         self.find('#cloud-plugin-content-' + category).show().css('display', 'inline-block')
         self.data('category', category)
-
-        // hide/show featured plugins if specific category/All
-        self.cloudPluginBox('toggleFeaturedPlugins')
     },
     cleanResults: function () {
         var self = $(this)
         self.find('.plugins-wrapper').html('')
+        self.find('.store-pagination').remove()
         self.find('ul.categories li').each(function () {
             var content = $(this).html().split(/\s/)
             if (content.length >= 2 && content[1] == "Utility") {
@@ -174,7 +205,7 @@ JqueryClass('cloudPluginBox', {
     },
     checkLocalScreenshot: function (plugin) {
         if (plugin.status == 'installed') {
-            if (plugin.gui) {
+            if (plugin.gui && plugin.gui.screenshot) {
                 var uri = escape(plugin.uri)
                 var ver = plugin.installedVersion.join('_')
                 plugin.screenshot_href = "/effect/image/screenshot.png?uri=" + uri + "&v=" + ver
@@ -194,23 +225,22 @@ JqueryClass('cloudPluginBox', {
     },
 
     toggleFeaturedPlugins: function () {
-      var self  = $(this)
-      var featuredPlugins = self.find('.featured-plugins')
-      var usingLabs = self.data('usingLabs')
-      var queryText = self.data('searchbox').val()
-      var category = self.data('category')
-
-      if (queryText === '' && category === 'All' && !usingLabs) {
-        if (featuredPlugins.is(':hidden')) {
-          featuredPlugins.show()
-        }
-      } else if (featuredPlugins.is(':visible')) {
-        featuredPlugins.hide()
-      }
     },
 
     // search all or installed, depending on selected option
     search: function (customRenderCallback) {
+        var self  = $(this)
+        self.data('storePage', 1)
+        self.cloudPluginBox('searchWithPage', customRenderCallback)
+    },
+
+    searchPage: function (page) {
+        var self = $(this)
+        self.data('storePage', page)
+        self.cloudPluginBox('searchWithPage', null)
+    },
+
+    searchWithPage: function (customRenderCallback) {
         var self  = $(this)
         var query = {
             text: self.data('searchbox').val(),
@@ -223,10 +253,14 @@ JqueryClass('cloudPluginBox', {
             query.stable = true
         }
 
-        // hide/show featured plugins if searching/not searching
-        var usingLabs = self.data('usingLabs')
+        // invalidate category counts when search text changes
+        var lastSearchText = self.data('lastSearchText') || ''
+        if ((query.text || '') !== lastSearchText) {
+            self.data('categoryCounts', null)
+            self.data('lastSearchText', query.text || '')
+        }
 
-        self.cloudPluginBox('toggleFeaturedPlugins')
+        var usingLabs = self.data('usingLabs')
 
         if (self.find('input:checkbox[name=installed]:checked').length)
             return self.cloudPluginBox('searchInstalled', usingLabs, query, customRenderCallback)
@@ -352,44 +386,36 @@ JqueryClass('cloudPluginBox', {
             self.cloudPluginBox('rebuildSearchIndex')
         }
 
-        // cloud search
+        // store search (Patchstorage)
         var cloudResults
+        var storePage = self.data('storePage') || 1
+        var selectedCategory = self.data('category')
+        var searchData = { q: query.text || '', page: storePage, per_page: 24 }
+        if (selectedCategory && selectedCategory !== 'All') {
+            searchData.category = selectedCategory
+        }
         $.ajax({
             method: 'GET',
-            url: (usingLabs ? CLOUD_LABS_URL : SITEURL) + "/lv2/plugins",
-            data: query,
-            success: function (plugins) {
-                cloudReached = true
-                cloudResults = plugins
+            url: '/store/patchstorage/search',
+            data: searchData,
+            success: function (result) {
+                if (result.items) {
+                    cloudReached = true
+                    cloudResults = result.items.map(mapStoreItem)
+                    self.data('storePage', result.page || 1)
+                    self.data('storeTotalPages', result.total_pages || 1)
+                    self.data('storeTotal', result.total || 0)
+                } else {
+                    cloudResults = []
+                }
             },
             error: function () {
                 cloudResults = []
             },
             complete: function () {
-                if (usingLabs) {
-                    results.cloud = cloudResults
-                    results.featured = []
-                    $('.featured-plugins').hide()
-                    renderResults()
-                } else {
-                    $.ajax({
-                        method: 'GET',
-                        url: SITEURL + "/lv2/plugins/featured",
-                        success: function (featured) {
-                            results.featured = featured
-                        },
-                        error: function () {
-                            results.featured = []
-                            $('.featured-plugins').hide()
-                        },
-                        complete: function () {
-                            results.cloud = cloudResults;
-                            renderResults()
-                        },
-                        cache: false,
-                        dataType: 'json'
-                    })
-                }
+                results.cloud = cloudResults
+                results.featured = []
+                renderResults()
             },
             cache: false,
             dataType: 'json'
@@ -480,7 +506,7 @@ JqueryClass('cloudPluginBox', {
                 }
 
                 // we're showing installed only, so prefer to show installed modgui screenshot
-                if (lplugin.gui) {
+                if (lplugin.gui && lplugin.gui.screenshot) {
                     var uri = escape(lplugin.uri)
                     var ver = [lplugin.builder, lplugin.microVersion, lplugin.minorVersion, lplugin.release].join('_')
 
@@ -508,32 +534,10 @@ JqueryClass('cloudPluginBox', {
             self.cloudPluginBox('rebuildSearchIndex')
         }
 
-        // cloud search
-        $.ajax({
-            method: 'GET',
-            url: (usingLabs ? CLOUD_LABS_URL : SITEURL) + "/lv2/plugins",
-            data: query,
-            success: function (plugins) {
-                // index by uri, needed later to check its latest version
-                var cplugins = {}
-                for (var i in plugins) {
-                    delete plugins[i].installedVersion
-                    delete plugins[i].bundles
-                    cplugins[plugins[i].uri] = plugins[i]
-                }
-                cloudReached = true
-                results.cloud = cplugins
-                if (results.local != null)
-                    renderResults()
-            },
-            error: function () {
-                results.cloud = {}
-                if (results.local != null)
-                    renderResults()
-            },
-            cache: false,
-            dataType: 'json'
-        })
+        // no cloud version check for installed-only view (store uses different IDs)
+        results.cloud = {}
+        if (results.local != null)
+            renderResults()
 
         // local search
         if (query.text)
@@ -580,9 +584,6 @@ JqueryClass('cloudPluginBox', {
     showPlugins: function (plugins, cloudReached) {
         var self = $(this)
         self.cloudPluginBox('cleanResults')
-        var featured = plugins.filter(function(p) {
-            return p.featured;
-        })
 
         // sort plugins by label
         plugins.sort(function (a, b) {
@@ -597,101 +598,123 @@ JqueryClass('cloudPluginBox', {
             return 0
         })
 
-        // sort featured plugins by priority
-        featured.sort(function (a, b) {
-            a = a.featured.priority
-            b = b.featured.priority
-            if (a > b) {
-                return 1
-            }
-            if (a < b) {
-                return -1
-            }
-            return 0
-        })
-
-        var category   = {}
-        var categories = {
-            'All': plugins.length,
-            'ControlVoltage': 0,
-            'Delay': 0,
-            'Distortion': 0,
-            'Dynamics': 0,
-            'Filter': 0,
-            'Generator': 0,
-            'MIDI': 0,
-            'Modulator': 0,
-            'Reverb': 0,
-            'Simulator': 0,
-            'Spatial': 0,
-            'Spectral': 0,
-            'Utility': 0,
-        }
-        var cachedContentCanvas = {
-            'All': self.find('#cloud-plugin-content-All')
+        var selectedCategory = self.data('category') || 'All'
+        var contentCanvas = self.find('#cloud-plugin-content-' + selectedCategory)
+        if (contentCanvas.length === 0) {
+            contentCanvas = self.find('#cloud-plugin-content-All')
         }
         var pluginsDict = {}
 
-        var getCategory = function(plugin) {
-            category = plugin.category[0]
-            if (category == 'Utility' && plugin.category.length == 2 && plugin.category[1] == 'MIDI') {
-                return 'MIDI';
-            }
-            return category
-        }
-
         var plugin, render
-		var factory = function(img) {
-			return function() {
-			    img.css('opacity', 1)
-                            var top = (parseInt((img.parent().height()-img.height())/2))+'px'
-                            // We need to put a padding in image, but slick creates clones of the
-                            // element to use on carousel, so we need padding in all clones
-                            var uri = img.parent().parent().parent().parent().attr('mod-uri')
-                            var clones = $('div.slick-slide[mod-uri="'+uri+'"][mod-role="cloud-plugin"]')
-                            clones.find('img').css('padding-top', top);
-			};
-		}
-
-		if (!self.data('featuredInitialized')) {
-			var featuredCanvas = $('.carousel')
-			for (var i in featured) {
-				plugin = featured[i]
-				render   = self.cloudPluginBox('renderPlugin', plugin, cloudReached, true)
-				render.appendTo(featuredCanvas)
-				render.find('img').on('load', factory(render.find('img')));
-			}
-			var columns = $(window).width() >= 1650 ? 5 : 3;
-			featuredCanvas.slick({
-				slidesToShow: Math.min(columns, plugins.length),
-				centerPadding: '60px',
-				centerMode: true,
-			});
-			self.data('featuredInitialized', true)
-		}
-
         for (var i in plugins) {
-            plugin   = plugins[i]
-            category = getCategory(plugin)
-            render   = self.cloudPluginBox('renderPlugin', plugin, cloudReached)
-
+            plugin = plugins[i]
+            render = self.cloudPluginBox('renderPlugin', plugin, cloudReached)
             pluginsDict[plugin.uri] = plugin
-
-            if (category && category != 'All' && categories[category] != null) {
-                categories[category] += 1
-                if (cachedContentCanvas[category] == null) {
-                    cachedContentCanvas[category] = self.find('#cloud-plugin-content-' + category)
-                }
-                render.clone(true).appendTo(cachedContentCanvas[category])
-            }
-
-            render.appendTo(cachedContentCanvas['All'])
+            render.appendTo(contentCanvas)
         }
 
         self.data('pluginsDict', pluginsDict)
 
-        // display plugin count
-        self.cloudPluginBox('setCategoryCount', categories)
+        // fetch and display category counts (once on first load)
+        self.cloudPluginBox('fetchCategoryCounts')
+
+        // render pagination controls
+        self.cloudPluginBox('renderPagination')
+    },
+
+    renderPagination: function () {
+        var self = $(this)
+        var page = self.data('storePage') || 1
+        var totalPages = self.data('storeTotalPages') || 1
+        var total = self.data('storeTotal') || 0
+
+        self.find('.store-pagination').remove()
+
+        if (totalPages <= 1) return
+
+        var nav = $('<div class="store-pagination"></div>')
+
+        var prevBtn = $('<button class="btn btn-mini">&laquo; Prev</button>')
+        if (page <= 1) {
+            prevBtn.prop('disabled', true).css('opacity', 0.4)
+        } else {
+            prevBtn.click(function () { self.cloudPluginBox('searchPage', page - 1) })
+        }
+
+        var nextBtn = $('<button class="btn btn-mini">Next &raquo;</button>')
+        if (page >= totalPages) {
+            nextBtn.prop('disabled', true).css('opacity', 0.4)
+        } else {
+            nextBtn.click(function () { self.cloudPluginBox('searchPage', page + 1) })
+        }
+
+        var info = $('<span style="margin:0 15px;color:#ccc;">Page ' + page + ' of ' + totalPages + ' (' + total + ' plugins)</span>')
+
+        nav.append(prevBtn, info, nextBtn)
+        nav.css({ textAlign: 'center', padding: '15px 0', clear: 'both' })
+        var selectedCategory = self.data('category') || 'All'
+        var contentDiv = self.find('#cloud-plugin-content-' + selectedCategory)
+        if (contentDiv.length === 0) {
+            contentDiv = self.find('#cloud-plugin-content-All')
+        }
+        contentDiv.after(nav)
+    },
+
+    fetchCategoryCounts: function () {
+        var self = $(this)
+        var counts = self.data('categoryCounts')
+        var searchText = self.data('searchbox').val() || ''
+
+        // Use storeTotal for the currently selected category
+        var selectedCategory = self.data('category') || 'All'
+        var storeTotal = self.data('storeTotal') || 0
+
+        if (counts) {
+            // Update the count for the current category from the API total
+            counts[selectedCategory] = storeTotal
+            self.cloudPluginBox('setCategoryCount', counts)
+            return
+        }
+
+        // First load: fetch counts for all categories in parallel
+        counts = {}
+        var categoryTabs = []
+        self.find('ul.categories li').each(function () {
+            var catId = $(this).attr('id').replace(/^cloud-plugin-tab-/, '')
+            categoryTabs.push(catId)
+        })
+
+        var pending = categoryTabs.length
+        var done = function () {
+            pending--
+            if (pending <= 0) {
+                self.data('categoryCounts', counts)
+                self.cloudPluginBox('setCategoryCount', counts)
+            }
+        }
+
+        for (var i = 0; i < categoryTabs.length; i++) {
+            (function (cat) {
+                var data = { q: searchText, page: 1, per_page: 1 }
+                if (cat !== 'All') {
+                    data.category = cat
+                }
+                $.ajax({
+                    method: 'GET',
+                    url: '/store/patchstorage/search',
+                    data: data,
+                    success: function (result) {
+                        counts[cat] = result.total || 0
+                    },
+                    error: function () {
+                        counts[cat] = 0
+                    },
+                    complete: done,
+                    cache: false,
+                    dataType: 'json'
+                })
+            })(categoryTabs[i])
+        }
     },
 
     setCategoryCount: function (categories) {
@@ -935,14 +958,14 @@ JqueryClass('cloudPluginBox', {
                 category: category || "None",
                 installed_version: version(plugin.installedVersion),
                 latest_version: version(plugin.latestVersion),
-                package_name: (plugin.bundle_name || plugin.bundles[0]).replace(/\.lv2$/, ''),
+                package_name: (plugin.bundle_name || (plugin.bundles && plugin.bundles[0]) || plugin.label || '').replace(/\.lv2$/, ''),
                 comment: plugin.comment.trim() || "No description available",
                 brand : plugin.brand,
                 name  : plugin.name,
                 label : plugin.label,
                 ports : plugin.ports,
-                plugin_href: PLUGINS_URL + '/' + btoa(plugin.uri),
-                pedalboard_href: desktop.getPedalboardHref(plugin.uri, plugin.stable === false),
+                plugin_href: plugin.store_id ? plugin.uri : (PLUGINS_URL + '/' + btoa(plugin.uri)),
+                pedalboard_href: plugin.store_id ? null : desktop.getPedalboardHref(plugin.uri, plugin.stable === false),
                 build_env_uppercase: (plugin.buildEnvironment || "LOCAL").toUpperCase(),
                 show_build_env: plugin.buildEnvironment !== "prod",
             };
@@ -985,7 +1008,41 @@ JqueryClass('cloudPluginBox', {
                         info.window('close')
 
                         // remove-only action, need to manually update plugins
-                        desktop.updatePluginList([], resp.removed)
+                        if (desktop.updatePluginList) {
+                            desktop.updatePluginList([], resp.removed)
+                        }
+                    })
+                })
+            } else if (plugin.store_id) {
+                // Store plugin - install directly via store endpoint
+                canInstall = true
+                info.find('.js-remove').hide()
+                info.find('.js-installed-version').hide()
+                info.find('.js-install').show().click(function () {
+                    var installBtn = info.find('.js-install')
+                    installBtn.prop('disabled', true).text('Installing...')
+                    $.ajax({
+                        url: '/store/' + plugin.store_source + '/install/' + plugin.store_id,
+                        type: 'POST',
+                        success: function (resp) {
+                            if (resp.ok) {
+                                new Notification('success', plugin.label + ' installed successfully', 5000)
+                                self.cloudPluginBox('postInstallAction', resp.installed, resp.removed, '')
+                                if (desktop.updateAllPlugins) {
+                                    desktop.updateAllPlugins()
+                                }
+                            } else {
+                                new Notification('error', 'Install failed: ' + resp.error, 8000)
+                                installBtn.prop('disabled', false).text('Install')
+                            }
+                            info.window('close')
+                        },
+                        error: function () {
+                            new Notification('error', 'Install failed: server error', 5000)
+                            installBtn.prop('disabled', false).text('Install')
+                        },
+                        cache: false,
+                        dataType: 'json'
                     })
                 })
             } else {
@@ -993,7 +1050,7 @@ JqueryClass('cloudPluginBox', {
                 info.find('.js-remove').hide()
                 info.find('.js-installed-version').hide()
                 info.find('.js-install').show().click(function () {
-                    // Install plugin
+                    // Install plugin via legacy flow
                     self.data('installPluginURI')(plugin.uri, self.data('usingLabs'), function (resp, bundlename) {
                         self.cloudPluginBox('postInstallAction', resp.installed, resp.removed, bundlename)
                         info.window('close')
@@ -1001,18 +1058,7 @@ JqueryClass('cloudPluginBox', {
                 })
             }
 
-            if (plugin.installedVersion && plugin.latestVersion && compareVersions(plugin.latestVersion, plugin.installedVersion) > 0) {
-                canUpgrade = true
-                info.find('.js-upgrade').show().click(function () {
-                    // Upgrade plugin
-                    self.data('upgradePluginURI')(plugin.uri, self.data('usingLabs'), function (resp, bundlename) {
-                        self.cloudPluginBox('postInstallAction', resp.installed, resp.removed, bundlename)
-                        info.window('close')
-                    })
-                })
-            } else {
-                info.find('.js-upgrade').hide()
-            }
+            info.find('.js-upgrade').hide()
 
             if (! plugin.latestVersion) {
                 info.find('.js-latest-version').hide()
@@ -1062,38 +1108,37 @@ JqueryClass('cloudPluginBox', {
             })
         }
 
-        // always get cloud plugin info
-        $.ajax({
-            url: (self.data('usingLabs') ? CLOUD_LABS_URL : SITEURL) + "/lv2/plugins",
-            data: {
-                uri: plugin.uri,
-                image_version: VERSION,
-                bin_compat: BIN_COMPAT,
-            },
-            success: function (pluginData) {
-                if (pluginData && pluginData.length > 0) {
-                    pluginData = pluginData[0]
-                    // delete local specific fields just in case
-                    delete pluginData.bundles
-                    delete pluginData.installedVersion
-                    // ready to merge
-                    plugin = $.extend(pluginData, plugin)
-                    plugin.latestVersion = [plugin.builder_version || 0, plugin.minorVersion, plugin.microVersion, plugin.release_number]
-                } else {
+        // get store or cloud plugin info
+        if (plugin.store_id) {
+            // Store plugin - fetch details from our store endpoint
+            $.ajax({
+                url: '/store/' + (plugin.store_source || 'patchstorage') + '/get/' + plugin.store_id,
+                success: function (item) {
+                    if (item && !item.error) {
+                        var mapped = mapStoreItem(item)
+                        plugin = $.extend(mapped, plugin)
+                    } else {
+                        plugin = $.extend(getDummyPluginData(), plugin)
+                    }
+                    plugin.latestVersion = null
+                    cloudChecked = true
+                    showInfo()
+                },
+                error: function () {
                     plugin = $.extend(getDummyPluginData(), plugin)
                     plugin.latestVersion = null
-                }
-                cloudChecked = true
-                showInfo()
-            },
-            error: function () {
-                plugin = $.extend(getDummyPluginData(), plugin)
-                plugin.latestVersion = null
-                cloudChecked = true
-                showInfo()
-            },
-            cache: false,
-            dataType: 'json'
-        })
+                    cloudChecked = true
+                    showInfo()
+                },
+                cache: false,
+                dataType: 'json'
+            })
+        } else {
+            // Local-only plugin, no cloud info available
+            plugin = $.extend(getDummyPluginData(), plugin)
+            plugin.latestVersion = null
+            cloudChecked = true
+            showInfo()
+        }
     },
 })

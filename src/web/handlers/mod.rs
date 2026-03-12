@@ -9,6 +9,7 @@ pub mod misc;
 pub mod pedalboard;
 pub mod recording;
 pub mod snapshot;
+pub mod store;
 pub mod system;
 pub mod templates;
 pub mod websocket;

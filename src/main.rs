@@ -20,6 +20,7 @@ mod protocol;
 mod recorder;
 mod screenshot;
 mod session;
+mod store;
 mod settings;
 #[allow(dead_code)]
 mod template;
@@ -46,6 +47,10 @@ pub struct AppState {
     pub read_loop_running: std::sync::Arc<std::sync::atomic::AtomicBool>,
     /// Cached plugin list for fast startup
     pub plugin_cache: plugin_cache::PluginCache,
+    /// Patchstorage store backend
+    pub store_patchstorage: store::patchstorage::PatchstorageBackend,
+    /// Tone3000 store backend
+    pub store_tone3000: store::tone3000::Tone3000Backend,
 }
 
 #[actix_web::main]
@@ -96,6 +101,7 @@ async fn main() -> std::io::Result<()> {
     }
 
     let pcache = plugin_cache::PluginCache::new(&settings.cache_dir);
+    let tone3000 = store::tone3000::Tone3000Backend::new(&settings.data_dir);
 
     let app_state = actix_web::web::Data::new(AppState {
         settings,
@@ -103,6 +109,8 @@ async fn main() -> std::io::Result<()> {
         ws_broadcast: ws_tx,
         read_loop_running: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         plugin_cache: pcache,
+        store_patchstorage: store::patchstorage::PatchstorageBackend::new(),
+        store_tone3000: tone3000,
     });
 
     // Start background plugin scan (serves disk cache immediately if available)
@@ -196,6 +204,16 @@ async fn main() -> std::io::Result<()> {
             .service(web::handlers::favorites::save_user_id)
             // Files
             .service(web::handlers::files::files_list)
+            // Store
+            .service(web::handlers::store::store_sources)
+            .service(web::handlers::store::store_search)
+            .service(web::handlers::store::store_get)
+            .service(web::handlers::store::store_categories)
+            .service(web::handlers::store::store_install)
+            .service(web::handlers::store::tone3000_auth_status)
+            .service(web::handlers::store::tone3000_auth_start)
+            .service(web::handlers::store::tone3000_auth_callback)
+            .service(web::handlers::store::tone3000_auth_disconnect)
             // File browser
             .service(web::handlers::filebrowser::filebrowser_page)
             .service(web::handlers::filebrowser::filebrowser_list)

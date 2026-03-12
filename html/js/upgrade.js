@@ -73,7 +73,7 @@ JqueryClass('upgradeWindow', {
             if (window.location.host == "192.168.50.1") {
                 html += "<br/><br/>" +
                         "Sorry, cannot update via bluetooth.<br/>" +
-                        "Please connect the MOD via USB and try again.";
+                        "Please connect the device via USB and try again.";
                 self.find('button.js-upgrade').addClass('disabled')
 
             } else if (self.data('updaterequired')) {
@@ -166,7 +166,7 @@ JqueryClass('upgradeWindow', {
         var self = $(this)
         var icon = self.data('icon')
 
-        icon.statusTooltip('message', "Failed to connect to MOD Cloud", true)
+        icon.statusTooltip('message', "Failed to connect to update server", true)
         icon.statusTooltip('status', 'error')
     },
 
@@ -185,7 +185,7 @@ JqueryClass('upgradeWindow', {
         if (m == 12 && (d == 24 || d == 25) && ! self.data('eggshown')) {
             self.data('eggshown', true)
             setTimeout(function() {
-                new Notification('warn', 'The MOD Team wishes you happy holidays!', 8000)
+                new Notification('warn', 'Happy holidays!', 8000)
             }, 5000)
         }
     },
@@ -219,7 +219,7 @@ JqueryClass('upgradeWindow', {
             self.find('.download-complete').show()
 
             if (self.data('updatesystem')) {
-                if (confirm("The MOD will now be updated. Any unsaved work will be lost. "+
+                if (confirm("The device will now be updated. Any unsaved work will be lost. "+
                             "The upgrade can take several minutes, "+
                             "in which you may not be able to play or do anything else. Continue?")) {
                     self.upgradeWindow('startUpgrade')

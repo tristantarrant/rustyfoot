@@ -27,3 +27,4 @@ rand = "0.8"
 libloading = "0.8"
 mime_guess = "2"
 image = "0.25"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

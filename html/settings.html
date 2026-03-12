@@ -4,7 +4,7 @@
 <!-- HEAD -->
 <head>
 <meta charset="UTF-8">
-<title>MOD Settings</title>
+<title>Settings</title>
 
 <link rel="apple-touch-icon" sizes="57x57" href="img/favicon/apple-icon-57x57.png">
 <link rel="apple-touch-icon" sizes="60x60" href="img/favicon/apple-icon-60x60.png">
@@ -633,7 +633,7 @@ $('document').ready(function() {
     })
 
     $("#button-action-backup-import").click(function () {
-        if (!confirm("Restoring data from USB stick will erase the current data inside the MOD.\n"
+        if (!confirm("Restoring data from USB stick will erase the current data on the device.\n"
                     +"Are you sure you want to continue?")) {
             return
         }
@@ -944,7 +944,7 @@ $('document').ready(function() {
     <div id="bank-library">
         <div class="box clearfix">
             <header>
-                <h1 class="bottom top">MOD Settings</h1>
+                <h1 class="bottom top">Settings</h1>
             </header>
             <div class="pedalboards clearfix js-pedalboards"></div>
         </div>
@@ -1004,24 +1004,24 @@ $('document').ready(function() {
                 <form class="form">
                     <!--
                     <p>
-                        <b>Power off the MOD</b>.<br/>
+                        <b>Power off the device</b>.<br/>
                         Note that all unsaved pedalboard changes will be lost.
                     </p>
                     <label>
-                        <input type="button" id="button-action-poweroff" value="Power off MOD"></input>
+                        <input type="button" id="button-action-poweroff" value="Power off"></input>
                     </label>
                     <br/><br/>
                     -->
                     <p>
-                        <b>Reboot the MOD</b>.<br/>
+                        <b>Reboot the device</b>.<br/>
                         Note that all unsaved pedalboard changes will be lost.
                     </p>
                     <label>
-                        <input type="button" id="button-action-reboot" value="Reboot MOD"></input>
+                        <input type="button" id="button-action-reboot" value="Reboot"></input>
                     </label>
                     <br/><br/>
                     <p>
-                        <b>Start the MOD's restore/update mode</b>, where you can manually update the MOD via
+                        <b>Start restore/update mode</b>, where you can manually update via
                             USB Mass Storage mode.<br/>
                         Note that all unsaved pedalboard changes will be lost.
                     </p>
@@ -1081,7 +1081,7 @@ $('document').ready(function() {
                         </input>
                     </label>
                     <p>
-                        MOD runs at 128 frames by default, enable this option to run JACK with 256 frames instead.<br/>
+                        Runs at 128 frames by default, enable this option to run JACK with 256 frames instead.<br/>
                         Useful if you need the extra time for more plugin processing.<br/>
                         Obviously this doubles the latency, so only enable it if really necessary.
                     </p>
@@ -1117,13 +1117,13 @@ $('document').ready(function() {
                     </p>
                     <label>
                         <input type="checkbox" autocomplete="off" id="prefs-ui-labs-plugins">
-                            Show MOD Labs plugins in the store
+                            Show community plugins in the store
                         </input>
                     </label>
                     <p>
-                        Show option to access "MOD Labs" plugins in the Plugin Store.<br/>
-                        Please note that MOD Labs plugins are community maintained, can be unstable and can cause crashes.
-                        If you share a pedalboard containing MOD Labs plugins, it will only be available to users that explicitly accept pedalboards using MOD Labs plugins.
+                        Show option to access community plugins in the Plugin Store.<br/>
+                        Please note that community plugins are community maintained, can be unstable and can cause crashes.
+                        If you share a pedalboard containing community plugins, it may not be available to all users.
                         Just remember: things can break!
                     </p>
                     <label for="prefs-ui-background">
@@ -1302,7 +1302,7 @@ $('document').ready(function() {
                         <ul>
                             <li>Disconnect the device from the Control Chain/Ethernet port</li>
                             <li>Hold down the first footswitch on the Control Chain device</li>
-                            <li>While the first footswitch is down, connect the device to the MOD unit via USB</li>
+                            <li>While the first footswitch is down, connect the device via USB</li>
                             <li>Wait for the "update completed" message</li>
                             <li>Disconnect the device from the USB port</li>
                             <li>Connect it to the Control Chain/Ethernet port once again</li>

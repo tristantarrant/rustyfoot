@@ -693,7 +693,7 @@ function Desktop(elements) {
                 'uri': dev_uri,
                 'label': label,
                 'download-url': CONTROLCHAIN_URL + "/file/" + label + cloudversion + ".bin",
-                'release-url': "http://wiki.moddevices.com/wiki/Control_Chain_Releases#" + label + "," + cloudversion
+                'release-url': "#"
             }
             elements.upgradeWindow.upgradeWindow('setupDevice', data)
         }
@@ -898,7 +898,7 @@ function Desktop(elements) {
             contentType: 'application/json',
             success: function (resp) {
                 if (!resp.data.stable && PREFERENCES['show-labs-plugins'] !== "true") {
-                    new Notification('error', 'This pedalboard contains one or more community maintained MOD Labs plugins. To load it, you need to enable MOD Labs plugins in <a href="settings">Settings</a> -> Advanced');
+                    new Notification('error', 'This pedalboard contains one or more community plugins. To load it, you need to enable community plugins in <a href="settings">Settings</a> -> Advanced');
                     return;
                 }
                 self.reset(function () {

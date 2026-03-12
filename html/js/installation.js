@@ -137,6 +137,34 @@ function InstallationQueue() {
         self.installBundleId(bundleId, usingLabs, callback)
     }
 
+    this.installFromStore = function (source, id, callback) {
+        self.openNotification()
+        notification.html('Installing from store...')
+
+        $.ajax({
+            url: '/store/' + source + '/install/' + id,
+            type: 'POST',
+            success: function (resp) {
+                if (resp.ok) {
+                    notification.html('Installation complete!')
+                    notification.type('success')
+                    notification.closeAfter(3000)
+                } else {
+                    notification.close()
+                    new Notification('error', 'Install failed: ' + resp.error, 5000)
+                }
+                callback(resp, '')
+            },
+            error: function () {
+                notification.close()
+                new Notification('error', 'Install failed: server error', 5000)
+                callback({ok: false}, '')
+            },
+            cache: false,
+            dataType: 'json'
+        })
+    }
+
     this.installNext = function () {
         var bundle = queue[0]
         var callback = callbacks[0]
