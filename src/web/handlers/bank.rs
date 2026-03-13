@@ -22,12 +22,22 @@ pub async fn bank_load(state: web::Data<AppState>) -> HttpResponse {
 }
 
 /// POST /banks/save - save bank configuration
+/// Accepts JSON body regardless of Content-Type header (jQuery sends
+/// application/x-www-form-urlencoded by default).
 #[post("/banks/save")]
 pub async fn bank_save(
-    body: web::Json<Vec<bank::Bank>>,
+    body: String,
     state: web::Data<AppState>,
 ) -> HttpResponse {
-    bank::save_banks(&state.settings.user_banks_json_file, &body);
+    let banks: Vec<bank::Bank> = match serde_json::from_str(&body) {
+        Ok(b) => b,
+        Err(e) => {
+            tracing::error!("[banks] failed to parse save body: {}", e);
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"ok": false, "error": e.to_string()}));
+        }
+    };
+    bank::save_banks(&state.settings.user_banks_json_file, &banks);
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
