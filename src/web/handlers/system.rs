@@ -10,6 +10,7 @@ use crate::AppState;
 #[get("/system/info")]
 pub async fn system_info(state: web::Data<AppState>) -> HttpResponse {
     let utsname = uname_info();
+    let devices = get_connected_devices();
     let resp = json!({
         "hwname": "rustyfoot",
         "architecture": std::env::consts::ARCH,
@@ -18,10 +19,65 @@ pub async fn system_info(state: web::Data<AppState>) -> HttpResponse {
         "model": state.settings.device_key.as_deref().unwrap_or("unknown"),
         "version": state.settings.image_version,
         "uname": utsname,
+        "devices": devices,
     });
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
         .json(resp)
+}
+
+/// Query JACK hardware ports and group them by device.
+fn get_connected_devices() -> Vec<serde_json::Value> {
+    use std::collections::BTreeMap;
+
+    // Collect all hardware ports
+    let audio_ins = crate::lv2_utils::get_jack_hardware_ports(true, false);
+    let audio_outs = crate::lv2_utils::get_jack_hardware_ports(true, true);
+    let midi_ins = crate::lv2_utils::get_jack_hardware_ports(false, false);
+    let midi_outs = crate::lv2_utils::get_jack_hardware_ports(false, true);
+
+    // Group by device name extracted from port alias
+    // Alias format: "alsa_pcm:DeviceName/port_type" or similar
+    let mut devices: BTreeMap<String, (usize, usize, usize, usize)> = BTreeMap::new();
+
+    let extract_device = |port: &str| -> String {
+        if let Some(alias) = crate::lv2_utils::get_jack_port_alias(port) {
+            // alias like "alsa_pcm:USB-Audio/midi_capture_1"
+            let name_part = alias.split_once(':').map(|(_, r)| r).unwrap_or(&alias);
+            let device = name_part.split_once('/').map(|(d, _)| d).unwrap_or(name_part);
+            device.replace('-', " ")
+        } else {
+            // Fallback: use JACK client name
+            port.split_once(':').map(|(c, _)| c).unwrap_or(port).to_string()
+        }
+    };
+
+    for port in &audio_ins {
+        let dev = extract_device(port);
+        devices.entry(dev).or_insert((0, 0, 0, 0)).0 += 1;
+    }
+    for port in &audio_outs {
+        let dev = extract_device(port);
+        devices.entry(dev).or_insert((0, 0, 0, 0)).1 += 1;
+    }
+    for port in &midi_ins {
+        let dev = extract_device(port);
+        devices.entry(dev).or_insert((0, 0, 0, 0)).2 += 1;
+    }
+    for port in &midi_outs {
+        let dev = extract_device(port);
+        devices.entry(dev).or_insert((0, 0, 0, 0)).3 += 1;
+    }
+
+    devices.into_iter().map(|(name, (ai, ao, mi, mo))| {
+        json!({
+            "name": name,
+            "audio_ins": ai,
+            "audio_outs": ao,
+            "midi_ins": mi,
+            "midi_outs": mo,
+        })
+    }).collect()
 }
 
 fn cpu_model() -> String {

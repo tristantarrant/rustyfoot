@@ -169,6 +169,24 @@ function refresh_sysinfo() {
             if (info.platform != "duox" || info.model == "duox:aarch64-a53") {
                 $("#prefs-audio-separate-spdif-outs_div").hide()
             }
+            // Populate connected devices
+            var devHtml = ''
+            if (info.devices && info.devices.length > 0) {
+                for (var i = 0; i < info.devices.length; i++) {
+                    var d = info.devices[i]
+                    var ports = []
+                    if (d.audio_ins > 0 || d.audio_outs > 0) {
+                        ports.push('Audio: ' + d.audio_ins + ' in / ' + d.audio_outs + ' out')
+                    }
+                    if (d.midi_ins > 0 || d.midi_outs > 0) {
+                        ports.push('MIDI: ' + d.midi_ins + ' in / ' + d.midi_outs + ' out')
+                    }
+                    devHtml += '<b>' + d.name + '</b><br/>' + ports.join(', ') + '<br/>'
+                }
+            } else {
+                devHtml = '<i>No devices detected</i>'
+            }
+            $("#info-devices").html(devHtml)
         },
         cache: false,
         global: false,
@@ -1260,6 +1278,11 @@ $('document').ready(function() {
                     <b>Sample Rate:</b> {{sampleRate}} Hz<br/>
                     <b>DSP Load:</b> <span id="info-dsp-load">--.- %</span><br/>
                 </form>
+
+                <hr style="border:1px solid #333;"/>
+
+                <h2>Devices</h2>
+                <div id="info-devices"></div>
 
                 <hr style="border:1px solid #333;"/>
 
