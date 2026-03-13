@@ -498,6 +498,15 @@ $('document').ready(function() {
             return
         }
 
+        if (cmd == "loading_pb") {
+            var i = data.indexOf(" ")
+            if (i > 0) {
+                desktop.pedalboardBundle = data.substring(0, i)
+                desktop.title = data.substring(i + 1)
+            }
+            return
+        }
+
         if (cmd == "loading_end") {
             var snapshotId = parseInt(data)
 

@@ -625,6 +625,9 @@ impl Session {
         self.host.plugins = crate::host::plugin::init_plugins_data();
         self.host.connections.clear();
 
+        // Tell browser to clear all plugins from canvas
+        self.msg_callback("remove :all");
+
         // Notify clients: loading starts
         self.msg_callback(&format!(
             "loading_start {} 0",
@@ -727,6 +730,9 @@ impl Session {
             .ipc
             .send_notmodified("feature_enable processing 2", None, "boolean")
             .await;
+
+        // Send pedalboard info to browser (bundle path + title)
+        self.msg_callback(&format!("loading_pb {} {}", bundlepath, title));
 
         // Notify loading end
         self.msg_callback(&format!(
