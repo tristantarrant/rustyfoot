@@ -16,9 +16,34 @@ pub async fn bank_load(state: web::Data<AppState>) -> HttpResponse {
         false,  // don't auto-save
     );
 
+    // Enrich pedalboards with metadata (version, factory) from pedalboard info
+    let enriched: Vec<serde_json::Value> = banks.iter().map(|bank| {
+        let pedalboards: Vec<serde_json::Value> = bank.pedalboards.iter().map(|pb| {
+            let info = crate::lv2_utils::get_pedalboard_info(&pb.bundle);
+            let version = info.as_ref()
+                .and_then(|i| i.get("version"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let factory = info.as_ref()
+                .and_then(|i| i.get("factory"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            serde_json::json!({
+                "title": pb.title,
+                "bundle": pb.bundle,
+                "version": version,
+                "factory": factory,
+            })
+        }).collect();
+        serde_json::json!({
+            "title": bank.title,
+            "pedalboards": pedalboards,
+        })
+    }).collect();
+
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
-        .json(banks)
+        .json(enriched)
 }
 
 /// POST /banks/save - save bank configuration
