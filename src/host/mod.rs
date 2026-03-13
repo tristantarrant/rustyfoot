@@ -1002,7 +1002,15 @@ impl Host {
             self.ipc
                 .send_notmodified("feature_enable processing 2", None, "boolean")
                 .await;
-            tracing::info!("[host] cleared previous session state, processing enabled");
+
+            // Enable MIDI program change monitoring on all 16 channels
+            for ch in 0..16 {
+                self.ipc
+                    .send_notmodified(&format!("monitor_midi_program {} 1", ch), None, "boolean")
+                    .await;
+            }
+
+            tracing::info!("[host] cleared previous session state, processing and MIDI monitoring enabled");
         }
 
         read_stream
