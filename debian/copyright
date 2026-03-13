@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: rustyfoot
-Upstream-Contact: Dataforte <info@dataforte.nl>
+Upstream-Contact: Dataforte <info@dataforte.net>
 
 Files: *
 Copyright: 2026 Dataforte

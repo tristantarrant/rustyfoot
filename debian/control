@@ -1,7 +1,7 @@
 Source: rustyfoot
 Section: sound
 Priority: optional
-Maintainer: Dataforte <info@dataforte.nl>
+Maintainer: Dataforte <info@dataforte.net>
 Build-Depends: debhelper (>= 13),
                cargo,
                rustc,
