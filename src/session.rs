@@ -828,12 +828,9 @@ impl Session {
         self.web_load_pedalboard(&bundlepath, false, settings).await;
 
         // Notify the HMI of the pedalboard change
-        let uri = bundlepath.rsplit('/').next().unwrap_or(&bundlepath);
-        self.hmi.send(
-            &format!("{} {} {}", crate::mod_protocol::CMD_PEDALBOARD_LOAD, pb_index, uri),
-            Some(Box::new(|_| {})),
-            "boolean",
-        );
+        // Use pchng (set_pedalboard_index) not pb (CMD_PEDALBOARD_LOAD) — pb is for
+        // HMI→rustyfoot requests and triggers a loadPedalboard callback loop in the HMI.
+        self.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
     }
 
     // -------------------------------------------------------------------------
