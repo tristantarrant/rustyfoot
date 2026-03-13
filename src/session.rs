@@ -438,6 +438,11 @@ impl Session {
             if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
                 if let Some(param) = plugin_data.parameters.get_mut(uri) {
                     param.0 = serde_json::Value::String(value.to_string());
+                } else {
+                    plugin_data.parameters.insert(
+                        uri.to_string(),
+                        (serde_json::Value::String(value.to_string()), vtype.to_string()),
+                    );
                 }
             }
 

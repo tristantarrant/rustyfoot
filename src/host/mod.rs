@@ -35,6 +35,21 @@ use self::transport::TransportState;
 
 type MsgCallback = Box<dyn Fn(&str) + Send + Sync>;
 
+/// Convert an LV2 atom type URI to a single-char type code for patch_set messages.
+pub fn atom_type_char(type_uri: &str) -> &str {
+    match type_uri.rsplit('#').next().unwrap_or("") {
+        "Path" => "p",
+        "URI" => "u",
+        "String" => "s",
+        "Bool" => "b",
+        "Int" => "i",
+        "Long" => "l",
+        "Float" => "f",
+        "Double" => "g",
+        _ => "s",
+    }
+}
+
 /// The main Host — interface to the mod-host audio engine.
 pub struct Host {
     // IPC
@@ -1639,7 +1654,41 @@ impl Host {
                 plugin_data.populate_port_defaults(info);
             }
 
+            // Populate parameters (file paths, atom properties) from plugin info
+            if let Some(ref info) = info {
+                if let Some(params) = info.get("parameters").and_then(|v| v.as_array()) {
+                    for param in params {
+                        let param_uri = param.get("uri").and_then(|v| v.as_str()).unwrap_or("");
+                        let writable = param.get("writable").and_then(|v| v.as_bool()).unwrap_or(false);
+                        if param_uri.is_empty() || !writable {
+                            continue;
+                        }
+                        let type_uri = param.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                        let type_char = atom_type_char(type_uri).to_string();
+                        let default = param.get("ranges")
+                            .and_then(|r| r.get("default"))
+                            .cloned()
+                            .unwrap_or(serde_json::Value::String(String::new()));
+                        plugin_data.parameters.insert(param_uri.to_string(), (default, type_char));
+                    }
+                }
+            }
+
             self.plugins.insert(instance_id, plugin_data);
+
+            // Send patch_get for each writable parameter to retrieve current values from mod-host
+            if let Some(plugin_data) = self.plugins.get(&instance_id) {
+                let param_uris: Vec<String> = plugin_data.parameters.keys().cloned().collect();
+                for param_uri in param_uris {
+                    self.ipc
+                        .send_notmodified(
+                            &format!("patch_get {} {}", instance_id, param_uri),
+                            None,
+                            "boolean",
+                        )
+                        .await;
+                }
+            }
         }
     }
 

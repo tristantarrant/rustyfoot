@@ -269,6 +269,22 @@ async fn report_current_state(ws: &mut actix_ws::Session, state: &AppState) {
             }
         }
 
+        // Parameters (file paths, atom properties)
+        for (uri, (value, type_char)) in &plugin_data.parameters {
+            let value_str = match value {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            if !value_str.is_empty() {
+                let _ = ws
+                    .text(format!(
+                        "patch_set {} 1 {} {} {}",
+                        plugin_data.instance, uri, type_char, value_str
+                    ))
+                    .await;
+            }
+        }
+
         // Output monitor values
         for (symbol, value) in &plugin_data.outputs {
             if let Some(v) = value {
@@ -553,6 +569,35 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession) {
                     session.msg_callback(&format!(
                         "param_set {} {} {}",
                         instance, portsymbol, value
+                    ));
+                }
+            }
+        }
+        "patch_set" => {
+            // Format: instance_id uri type_code value
+            let fields: Vec<&str> = data.splitn(4, ' ').collect();
+            if fields.len() == 4 {
+                let instance_id: i32 = fields[0].parse().unwrap_or(-1);
+                let uri = fields[1];
+                let type_code = fields[2];
+                let value = fields[3];
+
+                let mut session = session.write().await;
+                let instance = session.host.mapper.get_instance(instance_id).map(|s| s.to_string());
+                if let Some(instance) = instance {
+                    // Update cached parameter value
+                    if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
+                        if let Some(param) = plugin_data.parameters.get_mut(uri) {
+                            param.0 = serde_json::Value::String(value.to_string());
+                        }
+                    }
+                    // Broadcast to websocket clients
+                    let writable = session.host.plugins.get(&instance_id)
+                        .map(|p| p.parameters.contains_key(uri))
+                        .unwrap_or(false);
+                    session.msg_callback(&format!(
+                        "patch_set {} {} {} {} {}",
+                        instance, if writable { 1 } else { 0 }, uri, type_code, value
                     ));
                 }
             }

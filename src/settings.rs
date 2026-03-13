@@ -251,9 +251,9 @@ impl Settings {
             hmi_baud_rate: env_int("MOD_HMI_BAUD_RATE", 10_000_000),
             hmi_serial_port: env_str("MOD_HMI_SERIAL_PORT", "/dev/ttyUSB0"),
             hmi_timeout: env_int("MOD_HMI_TIMEOUT", 0),
-            hmi_transport: env_str("MOD_HMI_TRANSPORT", "serial"),
+            hmi_transport: env_str("MOD_HMI_TRANSPORT", "tcp"),
             hmi_tcp_host: env_str("MOD_HMI_TCP_HOST", "127.0.0.1"),
-            hmi_tcp_port: env_int("MOD_HMI_TCP_PORT", 5000),
+            hmi_tcp_port: env_int("MOD_HMI_TCP_PORT", 9898),
 
             model_cpu: env::var("MOD_MODEL_CPU").ok(),
             model_type: env::var("MOD_MODEL_TYPE").ok(),
