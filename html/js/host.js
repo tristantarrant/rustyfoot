@@ -525,6 +525,8 @@ $('document').ready(function() {
 
                     if (resp.ok) {
                         desktop.titleBox.text((desktop.title || 'Untitled') + " - " + resp.name)
+                    } else {
+                        desktop.titleBox.text(desktop.title || 'Untitled')
                     }
 
                     pb_loading = false
