@@ -19,8 +19,6 @@ override_dh_auto_install:
 	mkdir -p debian/rustyfoot/usr/share/rustyfoot/default.pedalboard
 	cp -a default.pedalboard/* debian/rustyfoot/usr/share/rustyfoot/default.pedalboard/
 	cp -a factory-pedalboards debian/rustyfoot/usr/share/rustyfoot/factory-pedalboards
-	# Install systemd service
-	install -D -m 644 debian/rustyfoot.service debian/rustyfoot/usr/lib/systemd/system/rustyfoot.service
 
 override_dh_auto_test:
 	# Skip tests during build
