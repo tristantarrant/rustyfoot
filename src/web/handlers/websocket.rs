@@ -33,10 +33,10 @@ pub async fn websocket(
         // If we got a new read stream, spawn the mod-host read loop
         if let Some(read_stream) = read_stream {
             if !state.read_loop_running.swap(true, Ordering::SeqCst) {
-                let session_for_reader = state.session.clone();
+                let state_for_reader = state.clone();
                 let flag = state.read_loop_running.clone();
                 actix_web::rt::spawn(async move {
-                    mod_host_read_loop(read_stream, session_for_reader).await;
+                    mod_host_read_loop(read_stream, state_for_reader).await;
                     flag.store(false, Ordering::SeqCst);
                 });
             }
@@ -453,7 +453,8 @@ async fn handle_ws_message(
 
 /// Read async notifications from mod-host (port N+1) and process them.
 /// Runs as a background task for the lifetime of the connection.
-async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, session: SharedSession) {
+async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, state: std::sync::Arc<AppState>) {
+    let session = &state.session;
     tracing::info!("[mod-host-reader] read loop started");
     let mut buf = vec![0u8; 4096];
     let mut msg_buf = Vec::new();
@@ -474,7 +475,7 @@ async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, session: Sha
                         .to_string();
                     if !msg.is_empty() {
                         tracing::debug!("[mod-host-reader] received: {}", msg);
-                        handle_mod_host_message(&msg, &session).await;
+                        handle_mod_host_message(&msg, session, &state.settings).await;
                     }
                 }
             }
@@ -487,7 +488,7 @@ async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, session: Sha
 }
 
 /// Handle an async notification from mod-host.
-async fn handle_mod_host_message(msg: &str, session: &SharedSession) {
+async fn handle_mod_host_message(msg: &str, session: &SharedSession, settings: &crate::settings::Settings) {
     let parts: Vec<&str> = msg.splitn(2, ' ').collect();
     let cmd = parts[0];
     let data = if parts.len() > 1 { parts[1] } else { "" };
@@ -520,7 +521,10 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession) {
         }
         "midi_program_change" => {
             // Format: program
-            tracing::debug!("[mod-host-reader] midi_program_change: {}", data);
+            if let Ok(program) = data.trim().parse::<i32>() {
+                let mut session = session.write().await;
+                session.handle_midi_program_change(program, settings).await;
+            }
         }
         "transport" => {
             // Format: rolling bpb bpm speed

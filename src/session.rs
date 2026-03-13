@@ -758,6 +758,71 @@ impl Session {
     }
 
     // -------------------------------------------------------------------------
+    // MIDI program change
+
+    /// Handle a MIDI program change notification from mod-host.
+    /// Loads the pedalboard at the given program index within the current bank.
+    pub async fn handle_midi_program_change(&mut self, program: i32, settings: &Settings) {
+        let banks = crate::bank::list_banks(
+            &settings.user_banks_json_file,
+            &[],
+            true,
+            false,
+        );
+
+        // bank_id < userbanks_offset means we're on the "All pedalboards" virtual bank
+        // (or factory bank). In that case, collect all pedalboards from all user banks.
+        let bank_index = self.host.bank_id - self.host.userbanks_offset;
+
+        let all_pedalboards: Vec<crate::bank::Pedalboard>;
+        let pedalboards: &[crate::bank::Pedalboard] = if bank_index >= 0 {
+            if let Some(bank) = banks.get(bank_index as usize) {
+                &bank.pedalboards
+            } else {
+                tracing::warn!("[session] bank index {} out of range", bank_index);
+                return;
+            }
+        } else {
+            // "All" bank: flatten all user banks into one list
+            all_pedalboards = banks.iter().flat_map(|b| b.pedalboards.clone()).collect();
+            &all_pedalboards
+        };
+
+        let pb_index = program as usize;
+        if pb_index >= pedalboards.len() {
+            tracing::warn!(
+                "[session] MIDI program {} out of range (bank has {} pedalboards)",
+                program,
+                pedalboards.len()
+            );
+            return;
+        }
+
+        let bundlepath = pedalboards[pb_index].bundle.clone();
+        if bundlepath.is_empty() {
+            tracing::warn!("[session] MIDI program {} has empty bundle path", program);
+            return;
+        }
+
+        // Don't reload the same pedalboard
+        if self.host.pedalboard.path.to_str() == Some(&bundlepath) {
+            tracing::debug!(
+                "[session] MIDI program change: already on pedalboard {}",
+                bundlepath
+            );
+            return;
+        }
+
+        tracing::info!(
+            "[session] MIDI program change: loading pedalboard {} (program {})",
+            bundlepath,
+            program
+        );
+
+        self.web_load_pedalboard(&bundlepath, false, settings).await;
+    }
+
+    // -------------------------------------------------------------------------
     // Recording
 
     pub fn web_recording_start(&mut self) {
