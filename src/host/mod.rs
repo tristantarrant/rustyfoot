@@ -1010,7 +1010,7 @@ impl Host {
                     .await;
             }
 
-            tracing::info!("[host] cleared previous session state, processing and MIDI monitoring enabled");
+            tracing::debug!("[host] cleared previous session state, processing and MIDI monitoring enabled");
         }
 
         read_stream

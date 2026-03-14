@@ -66,7 +66,7 @@ impl HostIpc {
         self.idle = true;
         self.queue.clear();
 
-        tracing::info!("[host-ipc] connected to mod-host at {}", write_addr);
+        tracing::debug!("[host-ipc] connected to mod-host at {}", write_addr);
         Ok(read_stream)
     }
 

@@ -140,6 +140,7 @@ impl Session {
                 settings.hmi_timeout as u64,
                 &settings.hardware_desc_file,
             );
+            tcp_hmi.connect();
             Box::new(tcp_hmi)
         };
 
@@ -170,7 +171,7 @@ impl Session {
         self.websockets.push(ws);
 
         if is_first {
-            tracing::info!("[session] first websocket connected, starting UI session");
+            tracing::debug!("[session] first websocket connected, starting UI session");
             // host.start_session() is async, will be called from the handler
         }
     }
@@ -182,7 +183,7 @@ impl Session {
         }
 
         if self.websockets.is_empty() {
-            tracing::info!("[session] last websocket closed, ending UI session");
+            tracing::debug!("[session] last websocket closed, ending UI session");
             // host.end_session() is async, will be called from the handler
         }
     }
@@ -553,6 +554,8 @@ impl Session {
         let titlesym = utils::symbolify(title);
         let titlesym = &titlesym[..titlesym.len().min(16)];
 
+        tracing::info!("[session] saving pedalboard '{}' to {}", title, bundlepath);
+
         self.host.pedalboard.name = title.to_string();
         self.host.pedalboard.empty = false;
         self.host.pedalboard.modified = false;
@@ -599,6 +602,7 @@ impl Session {
         is_default: bool,
         settings: &Settings,
     ) -> Option<String> {
+        tracing::info!("[session] loading pedalboard from {}", bundlepath);
         let pb = match crate::lv2_utils::get_pedalboard_info(bundlepath) {
             Some(pb) => pb,
             None => {

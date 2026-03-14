@@ -144,6 +144,7 @@ pub async fn pedalboard_remove(
 
     let path = std::path::Path::new(bundlepath);
     if path.is_dir() && bundlepath.ends_with(".pedalboard") {
+        tracing::info!("[pedalboard] deleting {}", bundlepath);
         if let Err(e) = std::fs::remove_dir_all(path) {
             tracing::error!("[pedalboard] failed to remove {}: {}", bundlepath, e);
             return HttpResponse::Ok()

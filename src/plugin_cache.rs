@@ -29,7 +29,7 @@ impl PluginCache {
         if has_cache {
             // Notify immediately since we have data to serve
             cache.ready.notify_waiters();
-            tracing::info!("Plugin cache loaded from disk");
+            tracing::debug!("Plugin cache loaded from disk");
         }
 
         cache

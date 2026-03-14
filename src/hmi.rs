@@ -112,7 +112,7 @@ impl TcpHmi {
 
     /// Start the TCP connection and begin reading messages.
     /// This spawns a background task for the read loop.
-    pub async fn connect(&self) {
+    pub fn connect(&self) {
         let inner = self.inner.clone();
         tokio::spawn(async move {
             Self::connect_loop(inner).await;
@@ -120,18 +120,23 @@ impl TcpHmi {
     }
 
     async fn connect_loop(inner: Arc<Mutex<TcpHmiInner>>) {
+        let mut was_connected = false;
+
         loop {
             let (host, port) = {
                 let guard = inner.lock().await;
                 (guard.host.clone(), guard.port)
             };
 
-            tracing::info!("[hmi] connecting to {}:{}...", host, port);
+            if !was_connected {
+                tracing::info!("[hmi] connecting to {}:{}...", host, port);
+            }
 
             match TcpStream::connect((host.as_str(), port)).await {
                 Ok(stream) => {
                     stream.set_nodelay(true).ok();
-                    tracing::info!("[hmi] TCP connected");
+                    tracing::info!("[hmi] TCP connected to {}:{}", host, port);
+                    was_connected = true;
 
                     {
                         let mut guard = inner.lock().await;
@@ -151,10 +156,15 @@ impl TcpHmi {
                         guard.connected = false;
                         guard.is_initialized = false;
                     }
-                    tracing::warn!("[hmi] TCP connection lost, reconnecting in 1s...");
+                    tracing::warn!("[hmi] TCP connection lost, reconnecting...");
                 }
                 Err(e) => {
-                    tracing::warn!("[hmi] TCP connection failed: {}, retrying in 1s...", e);
+                    if was_connected {
+                        tracing::warn!("[hmi] TCP connection to {}:{} failed: {}", host, port, e);
+                        was_connected = false;
+                    } else {
+                        tracing::debug!("[hmi] TCP connection to {}:{} failed: {}", host, port, e);
+                    }
                 }
             }
 

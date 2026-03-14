@@ -59,7 +59,7 @@ async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info,actix_web::middleware::logger=warn")),
         )
         .init();
 
@@ -77,7 +77,7 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize JACK client (needed for MIDI device listing, audio ports, etc.)
     if lv2_utils::init_jack() {
-        tracing::info!("JACK client initialized");
+        tracing::debug!("JACK client initialized");
     } else {
         tracing::warn!("Failed to initialize JACK client");
     }
@@ -117,7 +117,7 @@ async fn main() -> std::io::Result<()> {
     app_state.plugin_cache.spawn_refresh();
 
     tracing::info!("Starting rustyfoot on {}:{}", bind_addr, port);
-    tracing::info!("Serving static files from {:?}", html_dir);
+    tracing::debug!("Serving static files from {:?}", html_dir);
 
     HttpServer::new(move || {
         let html_dir_str = html_dir.to_string_lossy().to_string();
@@ -286,7 +286,7 @@ fn ensure_default_pedalboard(ui_dir: &std::path::Path, pedalboards_dir: &std::pa
             }
         }
     }
-    tracing::info!("Installed default pedalboard to {}", dest.display());
+    tracing::debug!("Installed default pedalboard to {}", dest.display());
 }
 
 fn install_factory_pedalboards(ui_dir: &std::path::Path, pedalboards_dir: &std::path::Path) {
@@ -312,7 +312,7 @@ fn install_factory_pedalboards(ui_dir: &std::path::Path, pedalboards_dir: &std::
             continue;
         }
         copy_dir_recursive(&entry.path(), &dest);
-        tracing::info!("Installed factory pedalboard {}", name.to_string_lossy());
+        tracing::debug!("Installed factory pedalboard {}", name.to_string_lossy());
     }
 }
 

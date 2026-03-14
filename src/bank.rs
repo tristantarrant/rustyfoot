@@ -93,7 +93,7 @@ pub fn list_banks(
 
         if valid_pedals.is_empty() {
             let title: String = bank.title.chars().filter(|c| c.is_ascii()).collect();
-            tracing::info!(
+            tracing::debug!(
                 "Bank '{}' does not contain any pedalboards",
                 title
             );
@@ -188,7 +188,7 @@ pub fn remove_pedalboard_from_banks(banks_file: &Path, pedalboard: &str) {
 
         if bank.pedalboards.is_empty() {
             let title: String = bank.title.chars().filter(|c| c.is_ascii()).collect();
-            tracing::info!(
+            tracing::debug!(
                 "Bank '{}' does not contain any pedalboards",
                 title
             );

@@ -455,7 +455,7 @@ async fn handle_ws_message(
 /// Runs as a background task for the lifetime of the connection.
 async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, state: std::sync::Arc<AppState>) {
     let session = &state.session;
-    tracing::info!("[mod-host-reader] read loop started");
+    tracing::debug!("[mod-host-reader] read loop started");
     let mut buf = vec![0u8; 4096];
     let mut msg_buf = Vec::new();
 

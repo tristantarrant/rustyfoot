@@ -11,7 +11,7 @@ pub struct FakeHmi {
 
 impl FakeHmi {
     pub fn new() -> Self {
-        tracing::info!("Using FakeHMI");
+        tracing::debug!("Using FakeHMI");
         FakeHmi {
             initialized: std::sync::atomic::AtomicBool::new(false),
         }

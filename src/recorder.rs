@@ -54,7 +54,7 @@ impl Recorder {
             Ok(child) => {
                 self.proc = Some(child);
                 self.recording = true;
-                tracing::info!("[recorder] started recording");
+                tracing::debug!("[recorder] started recording");
             }
             Err(e) => {
                 tracing::error!("[recorder] failed to start: {}", e);

@@ -142,7 +142,7 @@ async fn install_patchstorage(id: u64, state: &web::Data<AppState>) -> HttpRespo
             .json(json!({"ok": false, "error": "No compatible file found for this target"})),
     };
 
-    tracing::info!("[store] downloading {} ({} bytes) from patchstorage", file.filename, file.filesize);
+    tracing::debug!("[store] downloading {} ({} bytes) from patchstorage", file.filename, file.filesize);
 
     // Download the file
     let data = match state.store_patchstorage.download(id, file.id).await {
@@ -152,7 +152,7 @@ async fn install_patchstorage(id: u64, state: &web::Data<AppState>) -> HttpRespo
             .json(json!({"ok": false, "error": e})),
     };
 
-    tracing::info!("[store] downloaded {} bytes, installing", data.len());
+    tracing::debug!("[store] downloaded {} bytes, installing", data.len());
 
     // Install using the same logic as effect_install
     let tmp_dir = &state.settings.download_tmp_dir;
@@ -324,7 +324,7 @@ async fn install_tone3000(id: u64, meta: &Tone3000InstallMeta, state: &web::Data
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
 
-        tracing::info!("[store] downloading {} from tone3000 ({}/{})", file.filename, i + 1, tone.files.len());
+        tracing::debug!("[store] downloading {} from tone3000 ({}/{})", file.filename, i + 1, tone.files.len());
 
         let data = match state.store_tone3000.download_model(&file.url).await {
             Ok(d) => d,
@@ -353,7 +353,7 @@ async fn install_tone3000(id: u64, meta: &Tone3000InstallMeta, state: &web::Data
             break;
         }
 
-        tracing::info!("[store] saved {} ({} bytes)", dest_path.display(), data.len());
+        tracing::debug!("[store] saved {} ({} bytes)", dest_path.display(), data.len());
         installed.push(filename);
     }
 

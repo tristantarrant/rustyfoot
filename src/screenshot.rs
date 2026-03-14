@@ -117,7 +117,7 @@ async fn screenshot_worker(
             notify
         };
 
-        tracing::info!("[screenshot] generating for {:?}", bp);
+        tracing::debug!("[screenshot] generating for {:?}", bp);
 
         // Run the CPU-intensive work on a blocking thread
         let html_dir_clone = html_dir.clone();
@@ -129,7 +129,7 @@ async fn screenshot_worker(
 
         match result {
             Ok(Ok(())) => {
-                tracing::info!("[screenshot] generated for {:?}", bp);
+                tracing::debug!("[screenshot] generated for {:?}", bp);
             }
             Ok(Err(e)) => {
                 tracing::error!("[screenshot] failed for {:?}: {}", bp, e);
@@ -151,7 +151,7 @@ async fn screenshot_worker(
 /// Load a PNG image, returning a transparent 1x1 image on failure.
 fn load_png(path: &Path) -> DynamicImage {
     image::open(path).unwrap_or_else(|_| {
-        tracing::warn!("[screenshot] failed to load {:?}", path);
+        tracing::debug!("[screenshot] failed to load {:?}", path);
         DynamicImage::ImageRgba8(RgbaImage::new(1, 1))
     })
 }
