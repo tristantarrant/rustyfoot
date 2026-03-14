@@ -116,6 +116,15 @@ async fn main() -> std::io::Result<()> {
     // Start background plugin scan (serves disk cache immediately if available)
     app_state.plugin_cache.spawn_refresh();
 
+    // Connect to mod-host, enable MIDI monitoring, and load last pedalboard at startup
+    // (don't wait for a browser to connect)
+    {
+        let state = app_state.clone().into_inner();
+        actix_web::rt::spawn(async move {
+            startup_connect(state).await;
+        });
+    }
+
     tracing::info!("Starting rustyfoot on {}:{}", bind_addr, port);
     tracing::debug!("Serving static files from {:?}", html_dir);
 
@@ -313,6 +322,40 @@ fn install_factory_pedalboards(ui_dir: &std::path::Path, pedalboards_dir: &std::
         }
         copy_dir_recursive(&entry.path(), &dest);
         tracing::debug!("Installed factory pedalboard {}", name.to_string_lossy());
+    }
+}
+
+/// Connect to mod-host at startup, enable MIDI monitoring, and load the last pedalboard.
+/// This runs as a background task so the HTTP server can start immediately.
+async fn startup_connect(state: std::sync::Arc<AppState>) {
+    use std::sync::atomic::Ordering;
+
+    // Connect to mod-host
+    let read_stream = {
+        let mut session = state.session.write().await;
+        session.host.start_session().await
+    };
+
+    // Spawn the notification read loop
+    if let Some(read_stream) = read_stream {
+        if !state.read_loop_running.swap(true, Ordering::SeqCst) {
+            let state_for_reader = state.clone();
+            let flag = state.read_loop_running.clone();
+            actix_web::rt::spawn(async move {
+                web::handlers::websocket::mod_host_read_loop(read_stream, state_for_reader).await;
+                flag.store(false, Ordering::SeqCst);
+            });
+        }
+    }
+
+    // Load the last pedalboard
+    let (bank_id, last_pb) = bank::get_last_bank_and_pedalboard(&state.settings.last_state_json_file);
+    if let Some(bundlepath) = last_pb {
+        if std::path::Path::new(&bundlepath).is_dir() {
+            let mut session = state.session.write().await;
+            session.host.bank_id = bank_id;
+            session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
+        }
     }
 }
 
