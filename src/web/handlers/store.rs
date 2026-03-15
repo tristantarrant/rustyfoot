@@ -35,6 +35,7 @@ pub async fn store_search(
     let result = match source.as_str() {
         "patchstorage" => state.store_patchstorage.search(&query).await,
         "tone3000" => state.store_tone3000.search(&query).await,
+        "hydrogen" => state.store_hydrogen.search(&query).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -58,6 +59,7 @@ pub async fn store_get(
     let result = match source.as_str() {
         "patchstorage" => state.store_patchstorage.get(id).await,
         "tone3000" => state.store_tone3000.get(id).await,
+        "hydrogen" => state.store_hydrogen.get(id).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -81,6 +83,7 @@ pub async fn store_categories(
     let result = match source.as_str() {
         "patchstorage" => state.store_patchstorage.categories().await,
         "tone3000" => state.store_tone3000.categories().await,
+        "hydrogen" => state.store_hydrogen.categories().await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -118,6 +121,7 @@ pub async fn store_install(
             let meta = body.map(|b| b.into_inner()).unwrap_or_default();
             install_tone3000(id, &meta, &state).await
         }
+        "hydrogen" => install_hydrogen(id, &state).await,
         _ => HttpResponse::Ok()
             .insert_header(("Cache-Control", "no-store"))
             .json(json!({"ok": false, "error": format!("unknown store source: {}", source)})),
@@ -373,6 +377,56 @@ async fn install_tone3000(id: u64, meta: &Tone3000InstallMeta, state: &web::Data
                 "directory": format!("{}/{}", dest_subdir, safe_title),
             }))
     }
+}
+
+/// Download a Hydrogen drumkit and save to user files.
+async fn install_hydrogen(id: u64, state: &web::Data<AppState>) -> HttpResponse {
+    let item = match state.store_hydrogen.get(id).await {
+        Ok(t) => t,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    };
+
+    let file = match item.files.first() {
+        Some(f) => f,
+        None => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": "No download URL found"})),
+    };
+
+    tracing::debug!("[store] downloading hydrogen drumkit '{}' from {}", item.title, file.url);
+
+    let data = match state.store_hydrogen.download(&file.url).await {
+        Ok(d) => d,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    };
+
+    let dest_dir = state.settings.user_files_dir.join("Hydrogen Drumkits");
+    if let Err(e) = std::fs::create_dir_all(&dest_dir) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to create directory: {}", e)}));
+    }
+
+    let dest_path = dest_dir.join(&file.filename);
+    if let Err(e) = std::fs::write(&dest_path, &data) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to save: {}", e)}));
+    }
+
+    tracing::info!("[store] installed hydrogen drumkit '{}' ({} bytes)", item.title, data.len());
+
+    HttpResponse::Ok()
+        .insert_header(("Cache-Control", "no-store"))
+        .json(json!({
+            "ok": true,
+            "installed": [file.filename],
+            "directory": "Hydrogen Drumkits",
+        }))
 }
 
 /// GET /store/tone3000/auth/status - check auth status

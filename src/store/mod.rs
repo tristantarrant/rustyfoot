@@ -1,5 +1,6 @@
 // Plugin/content store abstraction supporting multiple backends.
 
+pub mod hydrogen;
 pub mod patchstorage;
 pub mod tone3000;
 
@@ -90,5 +91,10 @@ pub const SOURCES: &[StoreSource] = &[
         id: "tone3000",
         name: "Tone3000",
         description: "NAM models and impulse responses from tone3000.com",
+    },
+    StoreSource {
+        id: "hydrogen",
+        name: "Hydrogen Drumkits",
+        description: "Drumkits for Hydrogen-compatible drum plugins",
     },
 ];
