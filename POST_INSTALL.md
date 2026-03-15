@@ -27,6 +27,35 @@ Disable DHCP Address Conflict Detection (saves ~2s on lease acquisition):
 sudo nmcli connection modify 'Wired connection 1' ipv4.dad-timeout 0
 ```
 
+## WiFi
+
+Scan for available networks:
+
+```bash
+nmcli device wifi list
+```
+
+Connect to a network:
+
+```bash
+sudo nmcli device wifi connect "SSID" password "password"
+```
+
+Connect to a hidden network:
+
+```bash
+sudo nmcli device wifi connect "SSID" password "password" hidden yes
+```
+
+Manage saved connections:
+
+```bash
+nmcli connection show                                        # list saved connections
+nmcli connection delete "SSID"                               # remove a connection
+nmcli connection modify "SSID" connection.autoconnect yes    # auto-connect on boot
+nmcli connection modify "SSID" connection.autoconnect-priority 10  # prefer this network
+```
+
 ## Disable Unnecessary Services
 
 These services are not needed on a dedicated audio appliance and add significant boot time (especially cloud-init and apparmor):
