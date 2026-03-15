@@ -140,7 +140,10 @@ pub fn save_last_bank_and_pedalboard(
     }
 }
 
-/// Get last bank ID and pedalboard path. Returns (bank_id, pedalboard_path).
+/// Get last bank index and pedalboard path from last.json.
+/// Returns (bank_index, pedalboard_path) where bank_index is the raw value from the file
+/// (-1 = "All Pedalboards", 0 = first user bank, 1 = second user bank, etc.).
+/// The caller must add `userbanks_offset` to convert to a `bank_id`.
 pub fn get_last_bank_and_pedalboard(last_state_file: &Path) -> (i32, Option<String>) {
     let data: Value = utils::safe_json_load_value(last_state_file, Value::Object(Default::default()));
 
@@ -162,14 +165,7 @@ pub fn get_last_bank_and_pedalboard(last_state_file: &Path) -> (i32, Option<Stri
 
     let pedalboard = obj.get("pedalboard").and_then(|v| v.as_str()).map(|s| s.to_string());
 
-    let supports_dividers = obj
-        .get("supportsDividers")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let offset = if supports_dividers { 2 } else { 1 };
-
-    (bank + offset, pedalboard)
+    (bank, pedalboard)
 }
 
 /// Remove a pedalboard from all user banks.

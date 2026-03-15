@@ -349,11 +349,12 @@ async fn startup_connect(state: std::sync::Arc<AppState>) {
     }
 
     // Load the last pedalboard
-    let (bank_id, last_pb) = bank::get_last_bank_and_pedalboard(&state.settings.last_state_json_file);
+    let (raw_bank, last_pb) = bank::get_last_bank_and_pedalboard(&state.settings.last_state_json_file);
     if let Some(bundlepath) = last_pb {
         if std::path::Path::new(&bundlepath).is_dir() {
             let mut session = state.session.write().await;
-            session.host.bank_id = bank_id;
+            // Convert raw bank index (-1=All, 0=first user, ...) to internal bank_id
+            session.host.bank_id = raw_bank + session.host.userbanks_offset;
             session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
         }
     }

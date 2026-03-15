@@ -44,9 +44,11 @@ fn get_unique_name(name: &str, names: &[String]) -> String {
 }
 
 /// Save last bank and pedalboard path to disk.
-fn save_last_bank_and_pedalboard(settings: &Settings, bank: i32, pedalboard: &str) {
+/// `bank_id` is the internal bank ID; `userbanks_offset` converts it to the file format
+/// where -1 = "All Pedalboards", 0 = first user bank, etc.
+fn save_last_bank_and_pedalboard(settings: &Settings, bank_id: i32, userbanks_offset: i32, pedalboard: &str) {
     let data = serde_json::json!({
-        "bank": bank - 2,
+        "bank": bank_id - userbanks_offset,
         "pedalboard": pedalboard,
         "supportsDividers": true,
     });
@@ -565,7 +567,7 @@ impl Session {
             .save_state_to_ttl(&bundlepath, title, titlesym);
 
         // Save last state
-        save_last_bank_and_pedalboard(settings, 0, &bundlepath);
+        save_last_bank_and_pedalboard(settings, self.host.bank_id, self.host.userbanks_offset, &bundlepath);
 
         // Ask mod-host to save extra state
         self.host
@@ -760,7 +762,7 @@ impl Session {
             self.host.pedalboard.size = (width, height);
             self.host.pedalboard.version = version;
 
-            save_last_bank_and_pedalboard(settings, self.host.bank_id, bundlepath);
+            save_last_bank_and_pedalboard(settings, self.host.bank_id, self.host.userbanks_offset, bundlepath);
         }
 
         self.screenshot_needed = true;
