@@ -36,6 +36,7 @@ pub async fn store_search(
         "patchstorage" => state.store_patchstorage.search(&query).await,
         "tone3000" => state.store_tone3000.search(&query).await,
         "hydrogen" => state.store_hydrogen.search(&query).await,
+        "musical_artifacts" => state.store_musical_artifacts.search(&query).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -60,6 +61,7 @@ pub async fn store_get(
         "patchstorage" => state.store_patchstorage.get(id).await,
         "tone3000" => state.store_tone3000.get(id).await,
         "hydrogen" => state.store_hydrogen.get(id).await,
+        "musical_artifacts" => state.store_musical_artifacts.get(id).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -84,6 +86,7 @@ pub async fn store_categories(
         "patchstorage" => state.store_patchstorage.categories().await,
         "tone3000" => state.store_tone3000.categories().await,
         "hydrogen" => state.store_hydrogen.categories().await,
+        "musical_artifacts" => state.store_musical_artifacts.categories().await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -122,6 +125,7 @@ pub async fn store_install(
             install_tone3000(id, &meta, &state).await
         }
         "hydrogen" => install_hydrogen(id, &state).await,
+        "musical_artifacts" => install_musical_artifact(id, &state).await,
         _ => HttpResponse::Ok()
             .insert_header(("Cache-Control", "no-store"))
             .json(json!({"ok": false, "error": format!("unknown store source: {}", source)})),
@@ -426,6 +430,57 @@ async fn install_hydrogen(id: u64, state: &web::Data<AppState>) -> HttpResponse 
             "ok": true,
             "installed": [file.filename],
             "directory": "Hydrogen Drumkits",
+        }))
+}
+
+/// Download a file from Musical Artifacts and save to user files.
+async fn install_musical_artifact(id: u64, state: &web::Data<AppState>) -> HttpResponse {
+    let item = match state.store_musical_artifacts.get(id).await {
+        Ok(t) => t,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    };
+
+    let file = match item.files.first() {
+        Some(f) => f,
+        None => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": "No download URL found"})),
+    };
+
+    tracing::debug!("[store] downloading musical artifact '{}' from {}", item.title, file.url);
+
+    let data = match state.store_musical_artifacts.download(&file.url).await {
+        Ok(d) => d,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    };
+
+    let dest_subdir = store::musical_artifacts::dest_subdir_for_file(&file.filename);
+    let dest_dir = state.settings.user_files_dir.join(dest_subdir);
+    if let Err(e) = std::fs::create_dir_all(&dest_dir) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to create directory: {}", e)}));
+    }
+
+    let dest_path = dest_dir.join(&file.filename);
+    if let Err(e) = std::fs::write(&dest_path, &data) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to save: {}", e)}));
+    }
+
+    tracing::info!("[store] installed musical artifact '{}' ({} bytes) to {}", item.title, data.len(), dest_subdir);
+
+    HttpResponse::Ok()
+        .insert_header(("Cache-Control", "no-store"))
+        .json(json!({
+            "ok": true,
+            "installed": [file.filename],
+            "directory": dest_subdir,
         }))
 }
 

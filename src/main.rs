@@ -53,6 +53,8 @@ pub struct AppState {
     pub store_tone3000: store::tone3000::Tone3000Backend,
     /// Hydrogen drumkit store backend
     pub store_hydrogen: store::hydrogen::HydrogenBackend,
+    /// Musical Artifacts store backend
+    pub store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend,
 }
 
 #[actix_web::main]
@@ -114,6 +116,7 @@ async fn main() -> std::io::Result<()> {
         store_patchstorage: store::patchstorage::PatchstorageBackend::new(),
         store_tone3000: tone3000,
         store_hydrogen: store::hydrogen::HydrogenBackend::new(),
+        store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend::new(),
     });
 
     // Start background plugin scan (serves disk cache immediately if available)

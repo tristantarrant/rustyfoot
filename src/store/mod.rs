@@ -1,6 +1,7 @@
 // Plugin/content store abstraction supporting multiple backends.
 
 pub mod hydrogen;
+pub mod musical_artifacts;
 pub mod patchstorage;
 pub mod tone3000;
 
@@ -96,5 +97,10 @@ pub const SOURCES: &[StoreSource] = &[
         id: "hydrogen",
         name: "Hydrogen Drumkits",
         description: "Drumkits for Hydrogen-compatible drum plugins",
+    },
+    StoreSource {
+        id: "musical_artifacts",
+        name: "Musical Artifacts",
+        description: "SF2 soundfonts, SFZ instruments, and MIDI files from musical-artifacts.com",
     },
 ];
