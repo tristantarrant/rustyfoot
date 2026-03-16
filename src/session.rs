@@ -24,6 +24,15 @@ fn get_all_user_pedalboard_names() -> Vec<String> {
         .collect()
 }
 
+/// Extract an f64 from a JSON value that may be a number or a string.
+fn json_as_f64(v: Option<&serde_json::Value>) -> Option<f64> {
+    match v? {
+        serde_json::Value::Number(n) => n.as_f64(),
+        serde_json::Value::String(s) => s.parse::<f64>().ok(),
+        _ => None,
+    }
+}
+
 /// Get a unique name by appending " (N)" if the name already exists.
 fn get_unique_name(name: &str, names: &[String]) -> String {
     if !names.iter().any(|n| n == name) {
@@ -366,8 +375,9 @@ impl Session {
         };
 
         let actuator_uri = addressing.get("uri").and_then(|v| v.as_str()).unwrap_or("");
-        let minimum = addressing.get("minimum").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        let maximum = addressing.get("maximum").and_then(|v| v.as_f64()).unwrap_or(1.0);
+        // The JS form sends min/max as strings (from input .val()), not numbers
+        let minimum = json_as_f64(addressing.get("minimum")).unwrap_or(0.0);
+        let maximum = json_as_f64(addressing.get("maximum")).unwrap_or(1.0);
 
         let instance_id = self.host.mapper.get_id(instance);
 
