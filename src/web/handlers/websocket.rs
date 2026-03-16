@@ -601,21 +601,52 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &cra
             }
         }
         "patch_set" => {
-            // Format: instance_id uri type_code value
+            // Format: instance_id uri type_code [value]
+            // Value may be empty (e.g. when plugin has no file loaded yet)
             let fields: Vec<&str> = data.splitn(4, ' ').collect();
-            if fields.len() == 4 {
+            if fields.len() >= 3 {
                 let instance_id: i32 = fields[0].parse().unwrap_or(-1);
                 let uri = fields[1];
                 let type_code = fields[2];
-                let value = fields[3];
+                let raw_value = if fields.len() == 4 { fields[3] } else { "" };
+
+                // Resolve symlinks for path parameters (mod-host state_load stores
+                // files as symlinks inside the pedalboard bundle's effect-N/ dir)
+                let value = if type_code == "p" && !raw_value.is_empty() {
+                    let path = std::path::Path::new(raw_value);
+                    if path.is_symlink() {
+                        match std::fs::read_link(path) {
+                            Ok(target) => {
+                                // read_link may return a relative path; resolve it
+                                let resolved = if target.is_relative() {
+                                    path.parent().unwrap_or(path).join(&target)
+                                } else {
+                                    target
+                                };
+                                // Canonicalize to get absolute path without symlinks
+                                std::fs::canonicalize(&resolved)
+                                    .unwrap_or(resolved)
+                                    .to_string_lossy()
+                                    .to_string()
+                            }
+                            Err(_) => raw_value.to_string(),
+                        }
+                    } else {
+                        raw_value.to_string()
+                    }
+                } else {
+                    raw_value.to_string()
+                };
 
                 let mut session = session.write().await;
                 let instance = session.host.mapper.get_instance(instance_id).map(|s| s.to_string());
                 if let Some(instance) = instance {
                     // Update cached parameter value
-                    if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
-                        if let Some(param) = plugin_data.parameters.get_mut(uri) {
-                            param.0 = serde_json::Value::String(value.to_string());
+                    if !value.is_empty() {
+                        if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
+                            if let Some(param) = plugin_data.parameters.get_mut(uri) {
+                                param.0 = serde_json::Value::String(value.clone());
+                            }
                         }
                     }
                     // Broadcast to websocket clients
