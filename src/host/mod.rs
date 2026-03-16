@@ -1547,6 +1547,20 @@ impl Host {
                     .await;
             }
 
+            // Send bypass MIDI CC mapping if present
+            if bypass_ch >= 0 && bypass_ctrl >= 0 {
+                self.ipc
+                    .send_notmodified(
+                        &format!(
+                            "midi_map {} :bypass {} {} 0.0 1.0",
+                            instance_id, bypass_ch, bypass_ctrl
+                        ),
+                        None,
+                        "boolean",
+                    )
+                    .await;
+            }
+
             // Notify websocket clients
             let has_build_env = if plugin_data.build_env.is_empty() { 0 } else { 1 };
             msg_callback(&format!(
