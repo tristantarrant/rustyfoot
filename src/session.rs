@@ -742,6 +742,37 @@ impl Session {
             .send_notmodified("feature_enable processing 2", None, "boolean")
             .await;
 
+        // Re-enable MIDI program change monitoring (remove -1 may clear it)
+        for ch in 0..16 {
+            self.host
+                .ipc
+                .send_notmodified(&format!("monitor_midi_program {} 1", ch), None, "boolean")
+                .await;
+        }
+
+        // Re-query file/atom parameter values now that state has been restored.
+        // The patch_get calls during load_pb_plugins ran BEFORE state_load, so they
+        // returned default values. After state_load the plugin has the correct state.
+        {
+            use crate::settings::PEDALBOARD_INSTANCE_ID;
+            let queries: Vec<(i32, String)> = self.host.plugins.iter()
+                .filter(|&(&id, _)| id != PEDALBOARD_INSTANCE_ID)
+                .flat_map(|(&id, pd)| {
+                    pd.parameters.keys().map(move |uri| (id, uri.clone()))
+                })
+                .collect();
+            for (instance_id, param_uri) in queries {
+                self.host
+                    .ipc
+                    .send_notmodified(
+                        &format!("patch_get {} {}", instance_id, param_uri),
+                        None,
+                        "boolean",
+                    )
+                    .await;
+            }
+        }
+
         // Send pedalboard info to browser (bundle path + title)
         self.msg_callback(&format!("loading_pb {} {}", bundlepath, title));
 
