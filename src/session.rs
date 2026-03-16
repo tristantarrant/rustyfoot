@@ -395,7 +395,11 @@ impl Session {
         } else if actuator_uri == "/midi-unlearn" {
             // Disable MIDI mapping
             if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
-                plugin_data.midi_ccs.remove(portsymbol);
+                if portsymbol == ":bypass" {
+                    plugin_data.bypass_cc = (-1, -1);
+                } else {
+                    plugin_data.midi_ccs.remove(portsymbol);
+                }
             }
             let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
             self.host.ipc.send_modified(&msg, None, "boolean").await;
@@ -406,10 +410,14 @@ impl Session {
             if parts.len() == 2 {
                 if let (Ok(channel), Ok(controller)) = (parts[0].parse::<i32>(), parts[1].parse::<i32>()) {
                     if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
-                        plugin_data.midi_ccs.insert(
-                            portsymbol.to_string(),
-                            (channel, controller, minimum, maximum),
-                        );
+                        if portsymbol == ":bypass" {
+                            plugin_data.bypass_cc = (channel, controller);
+                        } else {
+                            plugin_data.midi_ccs.insert(
+                                portsymbol.to_string(),
+                                (channel, controller, minimum, maximum),
+                            );
+                        }
                     }
                     let (adj_min, adj_max) = midi_cal.adjust(controller, minimum, maximum);
                     let msg = format!("midi_map {} {} {} {} {} {}",
@@ -420,7 +428,11 @@ impl Session {
         } else if actuator_uri == "null" || actuator_uri.is_empty() {
             // Unaddress
             if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
-                plugin_data.midi_ccs.remove(portsymbol);
+                if portsymbol == ":bypass" {
+                    plugin_data.bypass_cc = (-1, -1);
+                } else {
+                    plugin_data.midi_ccs.remove(portsymbol);
+                }
             }
             let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
             self.host.ipc.send_modified(&msg, None, "boolean").await;

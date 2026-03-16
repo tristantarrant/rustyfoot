@@ -506,12 +506,17 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &cra
 
                 let mut session = session.write().await;
                 if let Some(instance) = session.host.mapper.get_instance(instance_id).map(|s| s.to_string()) {
-                    // Persist the MIDI CC binding (original range) so it's saved in the pedalboard TTL
+                    // Persist the MIDI CC binding so it's saved in the pedalboard TTL
                     if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
-                        plugin_data.midi_ccs.insert(
-                            portsymbol.to_string(),
-                            (channel, controller, minimum, maximum),
-                        );
+                        if portsymbol == ":bypass" {
+                            plugin_data.bypass_cc = (channel, controller);
+                            plugin_data.bypassed = value != 0.0;
+                        } else {
+                            plugin_data.midi_ccs.insert(
+                                portsymbol.to_string(),
+                                (channel, controller, minimum, maximum),
+                            );
+                        }
                     }
                     // Apply calibration: re-send midi_map with adjusted range if needed
                     let midi_cal = state.midi_calibration.read().unwrap().clone();
