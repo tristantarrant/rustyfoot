@@ -2125,6 +2125,23 @@ JqueryClass('pedalboard', {
         }
         self.data('plugins', {})
 
+        // Remove hardware port DOM elements and clear arrays
+        var hwInputs = self.data('hwInputs')
+        if (hwInputs) {
+            for (var i = 0; i < hwInputs.length; i++) {
+                hwInputs[i].remove()
+            }
+        }
+        self.data('hwInputs', [])
+
+        var hwOutputs = self.data('hwOutputs')
+        if (hwOutputs) {
+            for (var i = 0; i < hwOutputs.length; i++) {
+                hwOutputs[i].remove()
+            }
+        }
+        self.data('hwOutputs', [])
+
         self.pedalboard('resetSize')
     },
 

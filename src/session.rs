@@ -653,8 +653,13 @@ impl Session {
         self.host.plugins = crate::host::plugin::init_plugins_data();
         self.host.connections.clear();
 
-        // Tell browser to clear all plugins from canvas
+        // Tell browser to clear all plugins from canvas (including hardware ports)
         self.msg_callback("remove :all");
+
+        // Re-send hardware ports (resetData clears them from the browser)
+        for msg in crate::web::handlers::websocket::hw_port_messages(self.host.midi_aggregated_mode) {
+            self.msg_callback(&msg);
+        }
 
         // Notify clients: loading starts
         self.msg_callback(&format!(
