@@ -634,6 +634,11 @@ impl Session {
         // Tell browser to clear all plugins from canvas
         self.msg_callback("remove :all");
 
+        // Re-send hardware ports (remove :all clears them from the browser canvas)
+        for msg in crate::web::handlers::websocket::hw_port_messages(self.host.midi_aggregated_mode) {
+            self.msg_callback(&msg);
+        }
+
         // Notify clients: loading starts
         self.msg_callback(&format!(
             "loading_start {} 0",

@@ -144,64 +144,9 @@ async fn report_current_state(ws: &mut actix_ws::Session, state: &AppState) {
         ))
         .await;
 
-    // Hardware audio ports (dynamically enumerated from JACK)
-    let audio_ins = crate::lv2_utils::get_jack_hardware_ports(true, false);
-    for (i, port) in audio_ins.iter().enumerate() {
-        let port_name = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
-        let title = port_name.replace(|c: char| !c.is_alphanumeric() && c != '_', "_");
-        let title = title[..1].to_uppercase() + &title[1..];
-        let _ = ws
-            .text(format!("add_hw_port /graph/{} audio 0 {} {}", port_name, title, i + 1))
-            .await;
-    }
-    let audio_outs = crate::lv2_utils::get_jack_hardware_ports(true, true);
-    for (i, port) in audio_outs.iter().enumerate() {
-        let port_name = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
-        let title = port_name.replace(|c: char| !c.is_alphanumeric() && c != '_', "_");
-        let title = title[..1].to_uppercase() + &title[1..];
-        let _ = ws
-            .text(format!("add_hw_port /graph/{} audio 1 {} {}", port_name, title, i + 1))
-            .await;
-    }
-
-    // MIDI ports
-    if session.host.midi_aggregated_mode {
-        let _ = ws
-            .text("add_hw_port /graph/midi_merger_out midi 0 All_MIDI_In 1")
-            .await;
-        let _ = ws
-            .text("add_hw_port /graph/midi_broadcaster_in midi 1 All_MIDI_Out 1")
-            .await;
-    } else {
-        // Separated mode: enumerate individual MIDI hardware ports
-        let midi_ins = crate::lv2_utils::get_jack_hardware_ports(false, false);
-        for (i, port) in midi_ins.iter().enumerate() {
-            if !port.starts_with("system:midi_") {
-                continue;
-            }
-            let port_short = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
-            let title = midi_port_title_for_hw(port);
-            let _ = ws
-                .text(format!(
-                    "add_hw_port /graph/{} midi 0 {} {}",
-                    port_short, title, i + 1
-                ))
-                .await;
-        }
-        let midi_outs = crate::lv2_utils::get_jack_hardware_ports(false, true);
-        for (i, port) in midi_outs.iter().enumerate() {
-            if !port.starts_with("system:midi_") {
-                continue;
-            }
-            let port_short = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
-            let title = midi_port_title_for_hw(port);
-            let _ = ws
-                .text(format!(
-                    "add_hw_port /graph/{} midi 1 {} {}",
-                    port_short, title, i + 1
-                ))
-                .await;
-        }
+    // Hardware audio and MIDI ports (dynamically enumerated from JACK)
+    for msg in hw_port_messages(session.host.midi_aggregated_mode) {
+        let _ = ws.text(msg).await;
     }
 
     // Send loaded plugins
@@ -312,6 +257,58 @@ async fn report_current_state(ws: &mut actix_ws::Session, state: &AppState) {
             pedalboard.current_snapshot_id,
         ))
         .await;
+}
+
+/// Generate `add_hw_port` messages for all hardware audio and MIDI ports.
+/// Used both during initial WebSocket connection and after pedalboard loads
+/// (which broadcast `remove :all` clearing all ports from the browser canvas).
+pub fn hw_port_messages(midi_aggregated_mode: bool) -> Vec<String> {
+    let mut msgs = Vec::new();
+
+    // Audio input ports
+    let audio_ins = crate::lv2_utils::get_jack_hardware_ports(true, false);
+    for (i, port) in audio_ins.iter().enumerate() {
+        let port_name = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
+        let title = port_name.replace(|c: char| !c.is_alphanumeric() && c != '_', "_");
+        let title = title[..1].to_uppercase() + &title[1..];
+        msgs.push(format!("add_hw_port /graph/{} audio 0 {} {}", port_name, title, i + 1));
+    }
+
+    // Audio output ports
+    let audio_outs = crate::lv2_utils::get_jack_hardware_ports(true, true);
+    for (i, port) in audio_outs.iter().enumerate() {
+        let port_name = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
+        let title = port_name.replace(|c: char| !c.is_alphanumeric() && c != '_', "_");
+        let title = title[..1].to_uppercase() + &title[1..];
+        msgs.push(format!("add_hw_port /graph/{} audio 1 {} {}", port_name, title, i + 1));
+    }
+
+    // MIDI ports
+    if midi_aggregated_mode {
+        msgs.push("add_hw_port /graph/midi_merger_out midi 0 All_MIDI_In 1".to_string());
+        msgs.push("add_hw_port /graph/midi_broadcaster_in midi 1 All_MIDI_Out 1".to_string());
+    } else {
+        let midi_ins = crate::lv2_utils::get_jack_hardware_ports(false, false);
+        for (i, port) in midi_ins.iter().enumerate() {
+            if !port.starts_with("system:midi_") {
+                continue;
+            }
+            let port_short = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
+            let title = midi_port_title_for_hw(port);
+            msgs.push(format!("add_hw_port /graph/{} midi 0 {} {}", port_short, title, i + 1));
+        }
+        let midi_outs = crate::lv2_utils::get_jack_hardware_ports(false, true);
+        for (i, port) in midi_outs.iter().enumerate() {
+            if !port.starts_with("system:midi_") {
+                continue;
+            }
+            let port_short = port.split_once(':').map(|(_, r)| r).unwrap_or(port);
+            let title = midi_port_title_for_hw(port);
+            msgs.push(format!("add_hw_port /graph/{} midi 1 {} {}", port_short, title, i + 1));
+        }
+    }
+
+    msgs
 }
 
 /// Get a human-readable title for a MIDI hardware port, formatted for WebSocket messages.
