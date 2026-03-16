@@ -96,6 +96,10 @@ impl Hmi for FakeHmi {
         self.send(&format!("pchng {}", index), Some(callback), "int");
     }
 
+    fn set_bank_index(&self, index: i32, callback: HmiCallback) {
+        self.send(&format!("bchng {}", index), Some(callback), "int");
+    }
+
     fn set_available_pages(&self, pages: &[i32], callback: HmiCallback) {
         let page_str: Vec<String> = pages.iter().map(|p| p.to_string()).collect();
         self.send(

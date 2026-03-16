@@ -35,6 +35,7 @@ pub fn cmd_args() -> HashMap<&'static str, HashMap<&'static str, Vec<ArgType>>> 
     all.insert("fpc", vec![Str, Str, Str]);
     all.insert("ncp", vec![Int, Int, Int]);
     all.insert("is", vec![Int, Int, Int, Int, Int, Int, Str, Str]);
+    all.insert("bchng", vec![Int]);
     all.insert("b", vec![Int, Int]);
     all.insert("bn", vec![Str]);
     all.insert("bd", vec![Int]);
@@ -155,6 +156,7 @@ pub const CMD_FILE_PARAM_SET: &str = "fps";
 pub const CMD_FILE_PARAM_CURRENT: &str = "fpc";
 pub const CMD_CONTROL_PAGE: &str = "ncp";
 pub const CMD_INITIAL_STATE: &str = "is";
+pub const CMD_BANK_CHANGE: &str = "bchng";
 pub const CMD_BANKS: &str = "b";
 pub const CMD_BANK_NEW: &str = "bn";
 pub const CMD_BANK_DELETE: &str = "bd";
@@ -324,6 +326,7 @@ pub fn cmd_to_str(cmd: &str) -> &'static str {
         "fpc" => "CMD_FILE_PARAM_CURRENT",
         "ncp" => "CMD_CONTROL_PAGE",
         "is" => "CMD_INITIAL_STATE",
+        "bchng" => "CMD_BANK_CHANGE",
         "b" => "CMD_BANKS",
         "bn" => "CMD_BANK_NEW",
         "bd" => "CMD_BANK_DELETE",

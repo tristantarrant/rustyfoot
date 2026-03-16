@@ -28,6 +28,7 @@ pub trait Hmi: Send + Sync {
     fn set_snapshot_name(&self, index: i32, name: &str, callback: HmiCallback);
     fn set_profile_value(&self, key: i32, value: f64, callback: HmiCallback);
     fn set_pedalboard_index(&self, index: i32, callback: HmiCallback);
+    fn set_bank_index(&self, index: i32, callback: HmiCallback);
     fn set_available_pages(&self, pages: &[i32], callback: HmiCallback);
     fn restore(&self, callback: HmiCallback);
     fn tuner(&self, freq: f64, note: &str, cents: i32, callback: HmiCallback);
@@ -486,6 +487,14 @@ impl Hmi for TcpHmi {
     fn set_pedalboard_index(&self, index: i32, callback: HmiCallback) {
         self.send(
             &format!("{} {}", CMD_PEDALBOARD_CHANGE, index),
+            Some(callback),
+            "int",
+        );
+    }
+
+    fn set_bank_index(&self, index: i32, callback: HmiCallback) {
+        self.send(
+            &format!("{} {}", CMD_BANK_CHANGE, index),
             Some(callback),
             "int",
         );

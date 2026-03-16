@@ -362,6 +362,9 @@ async fn startup_connect(state: std::sync::Arc<AppState>) {
             // Convert raw bank index (-1=All, 0=first user, ...) to internal bank_id
             session.host.bank_id = raw_bank + session.host.userbanks_offset;
             session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
+            // Notify HMI of the current bank (HMI bank IDs are bank_id + 1)
+            let hmi_bank = session.host.bank_id + 1;
+            session.hmi.set_bank_index(hmi_bank, Box::new(|_| {}));
         }
     }
 }
