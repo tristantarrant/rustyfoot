@@ -94,7 +94,7 @@ async fn main() -> std::io::Result<()> {
     let port = settings.device_webserver_port;
     let html_dir = settings.html_dir.clone();
 
-    let shared_session = session::create_session(&settings);
+    let (shared_session, hmi_cmd_rx) = session::create_session(&settings);
 
     let (ws_tx, _) = tokio::sync::broadcast::channel::<String>(256);
 
@@ -128,6 +128,14 @@ async fn main() -> std::io::Result<()> {
         let state = app_state.clone().into_inner();
         actix_web::rt::spawn(async move {
             startup_connect(state).await;
+        });
+    }
+
+    // Spawn HMI command handler (pedalboard load requests from HMI)
+    if let Some(mut hmi_cmd_rx) = hmi_cmd_rx {
+        let state = app_state.clone().into_inner();
+        actix_web::rt::spawn(async move {
+            hmi_command_loop(&mut hmi_cmd_rx, state).await;
         });
     }
 
@@ -365,6 +373,79 @@ async fn startup_connect(state: std::sync::Arc<AppState>) {
             // Notify HMI of the current bank (HMI bank IDs are bank_id + 1)
             let hmi_bank = session.host.bank_id + 1;
             session.hmi.set_bank_index(hmi_bank, Box::new(|_| {}));
+        }
+    }
+}
+
+/// Handle commands received from the HMI (pedalboard load requests, etc.).
+async fn hmi_command_loop(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<hmi::HmiCommand>,
+    state: std::sync::Arc<AppState>,
+) {
+    while let Some(cmd) = rx.recv().await {
+        match cmd {
+            hmi::HmiCommand::PedalboardLoad(hmi_bank_id, pb_index_str) => {
+                let pb_index: usize = match pb_index_str.parse() {
+                    Ok(i) => i,
+                    Err(_) => {
+                        tracing::warn!("[hmi-cmd] invalid pedalboard index: {}", pb_index_str);
+                        continue;
+                    }
+                };
+
+                // Convert HMI bank_id (1=All, 2+=user banks) to rustyfoot bank_id
+                let bank_id = hmi_bank_id - 1;
+
+                let banks = bank::list_banks(
+                    &state.settings.user_banks_json_file,
+                    &[],
+                    true,
+                    false,
+                );
+
+                let session_r = state.session.read().await;
+                let userbanks_offset = session_r.host.userbanks_offset;
+                drop(session_r);
+
+                let bank_index = bank_id - userbanks_offset;
+
+                let all_pedalboards: Vec<bank::Pedalboard>;
+                let pedalboards: &[bank::Pedalboard] = if bank_index >= 0 {
+                    if let Some(bank) = banks.get(bank_index as usize) {
+                        &bank.pedalboards
+                    } else {
+                        tracing::warn!("[hmi-cmd] bank index {} out of range", bank_index);
+                        continue;
+                    }
+                } else {
+                    // "All Pedalboards" — flatten all banks
+                    all_pedalboards = banks.iter().flat_map(|b| b.pedalboards.clone()).collect();
+                    &all_pedalboards
+                };
+
+                if pb_index >= pedalboards.len() {
+                    tracing::warn!(
+                        "[hmi-cmd] pedalboard index {} out of range (bank has {})",
+                        pb_index, pedalboards.len()
+                    );
+                    continue;
+                }
+
+                let bundlepath = pedalboards[pb_index].bundle.clone();
+                if bundlepath.is_empty() {
+                    continue;
+                }
+
+                tracing::info!(
+                    "[hmi-cmd] loading pedalboard {} (bank={}, index={})",
+                    bundlepath, hmi_bank_id, pb_index
+                );
+
+                let mut session = state.session.write().await;
+                session.host.bank_id = bank_id;
+                session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
+                session.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
+            }
         }
     }
 }

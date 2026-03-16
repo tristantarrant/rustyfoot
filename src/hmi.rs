@@ -14,6 +14,13 @@ use crate::mod_protocol::*;
 use crate::protocol::{self, ParsedMessage, Protocol, RespValue};
 use crate::utils;
 
+/// Commands received from the HMI that need session-level handling.
+#[derive(Debug)]
+pub enum HmiCommand {
+    /// Pedalboard load request: (bank_id, pedalboard_index)
+    PedalboardLoad(i32, String),
+}
+
 /// Trait for HMI implementations (real TCP or fake).
 pub trait Hmi: Send + Sync {
     fn is_fake(&self) -> bool;
@@ -70,6 +77,7 @@ struct TcpHmiInner {
     hw_ids: Vec<i64>,
     bpm: Option<i64>,
     protocol: Protocol,
+    cmd_tx: tokio::sync::mpsc::UnboundedSender<HmiCommand>,
 }
 
 impl TcpHmi {
@@ -78,7 +86,7 @@ impl TcpHmi {
         port: u16,
         timeout_secs: u64,
         hw_desc_file: &std::path::Path,
-    ) -> Self {
+    ) -> (Self, tokio::sync::mpsc::UnboundedReceiver<HmiCommand>) {
         let hw_desc = utils::get_hardware_descriptor(hw_desc_file);
         let hw_ids = hw_desc
             .get("actuators")
@@ -90,7 +98,9 @@ impl TcpHmi {
             })
             .unwrap_or_default();
 
-        TcpHmi {
+        let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let hmi = TcpHmi {
             inner: Arc::new(Mutex::new(TcpHmiInner {
                 host: host.to_string(),
                 port,
@@ -107,8 +117,11 @@ impl TcpHmi {
                 hw_ids,
                 bpm: None,
                 protocol: Protocol::new(),
+                cmd_tx,
             })),
-        }
+        };
+
+        (hmi, cmd_rx)
     }
 
     /// Start the TCP connection and begin reading messages.
@@ -255,7 +268,20 @@ impl TcpHmi {
             // It's a command from HMI — parse and run
             tracing::debug!("[hmi] received command: {}", msg);
             match guard.protocol.parse(msg) {
-                Ok(_parsed) => {
+                Ok(parsed) => {
+                    // Forward actionable commands to the session handler
+                    if parsed.cmd == CMD_PEDALBOARD_LOAD && parsed.args.len() >= 2 {
+                        if let (
+                            protocol::ArgValue::Int(bank_id),
+                            protocol::ArgValue::Str(pb_arg),
+                        ) = (&parsed.args[0], &parsed.args[1]) {
+                            let _ = guard.cmd_tx.send(HmiCommand::PedalboardLoad(
+                                *bank_id as i32,
+                                pb_arg.clone(),
+                            ));
+                        }
+                    }
+
                     guard.handling_response = true;
                     let resp_msg = format!("{} 0", CMD_RESPONSE);
                     if let Some(ref mut stream) = guard.stream {

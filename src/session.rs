@@ -129,21 +129,21 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &Settings) -> (Self, Option<tokio::sync::mpsc::UnboundedReceiver<crate::hmi::HmiCommand>>) {
         let prefs = UserPreferences::new(&settings.preferences_json_file);
 
         // Initialize HMI
-        let hmi: Box<dyn Hmi> = if settings.dev_hmi {
-            Box::new(FakeHmi::new())
+        let (hmi, hmi_cmd_rx): (Box<dyn Hmi>, _) = if settings.dev_hmi {
+            (Box::new(FakeHmi::new()), None)
         } else {
-            let tcp_hmi = TcpHmi::new(
+            let (tcp_hmi, cmd_rx) = TcpHmi::new(
                 &settings.hmi_tcp_host,
                 settings.hmi_tcp_port as u16,
                 settings.hmi_timeout as u64,
                 &settings.hardware_desc_file,
             );
             tcp_hmi.connect();
-            Box::new(tcp_hmi)
+            (Box::new(tcp_hmi), Some(cmd_rx))
         };
 
         let host = Host::new(settings);
@@ -151,7 +151,7 @@ impl Session {
         let player = Player::new(settings);
         let screenshot_generator = ScreenshotGenerator::new(settings);
 
-        Self {
+        (Self {
             prefs,
             hmi,
             host,
@@ -161,7 +161,7 @@ impl Session {
             websockets: Vec::new(),
             ws_broadcast: None,
             screenshot_needed: false,
-        }
+        }, hmi_cmd_rx)
     }
 
     // -------------------------------------------------------------------------
@@ -868,6 +868,7 @@ impl Session {
 
 pub type SharedSession = Arc<RwLock<Session>>;
 
-pub fn create_session(settings: &Settings) -> SharedSession {
-    Arc::new(RwLock::new(Session::new(settings)))
+pub fn create_session(settings: &Settings) -> (SharedSession, Option<tokio::sync::mpsc::UnboundedReceiver<crate::hmi::HmiCommand>>) {
+    let (session, hmi_cmd_rx) = Session::new(settings);
+    (Arc::new(RwLock::new(session)), hmi_cmd_rx)
 }
