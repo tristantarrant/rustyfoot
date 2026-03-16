@@ -5,6 +5,7 @@ pub mod favorites;
 pub mod filebrowser;
 pub mod files;
 pub mod jack;
+pub mod midi_calibration;
 pub mod misc;
 pub mod pedalboard;
 pub mod recording;

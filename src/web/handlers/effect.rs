@@ -153,8 +153,9 @@ pub async fn effect_parameter_address(
 ) -> HttpResponse {
     let port = format!("/{}", path.into_inner().trim_start_matches('/'));
     let addressing: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+    let midi_cal = state.midi_calibration.read().unwrap().clone();
     let mut session = state.session.write().await;
-    session.web_parameter_address(&port, &addressing).await;
+    session.web_parameter_address(&port, &addressing, &midi_cal).await;
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))

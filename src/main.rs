@@ -10,6 +10,7 @@ mod hmi;
 mod host;
 #[allow(dead_code)]
 mod lv2_utils;
+mod midi_calibration;
 #[allow(dead_code)]
 mod mod_protocol;
 mod plugin_cache;
@@ -55,6 +56,8 @@ pub struct AppState {
     pub store_hydrogen: store::hydrogen::HydrogenBackend,
     /// Musical Artifacts store backend
     pub store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend,
+    /// Per-CC MIDI expression pedal calibration
+    pub midi_calibration: std::sync::RwLock<midi_calibration::MidiCalibration>,
 }
 
 #[actix_web::main]
@@ -107,6 +110,8 @@ async fn main() -> std::io::Result<()> {
     let pcache = plugin_cache::PluginCache::new(&settings.cache_dir);
     let tone3000 = store::tone3000::Tone3000Backend::new(&settings.data_dir);
 
+    let midi_cal = midi_calibration::MidiCalibration::new(&settings.data_dir);
+
     let app_state = actix_web::web::Data::new(AppState {
         settings,
         session: shared_session,
@@ -117,6 +122,7 @@ async fn main() -> std::io::Result<()> {
         store_tone3000: tone3000,
         store_hydrogen: store::hydrogen::HydrogenBackend::new(),
         store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend::new(),
+        midi_calibration: std::sync::RwLock::new(midi_cal),
     });
 
     // Start background plugin scan (serves disk cache immediately if available)
@@ -214,6 +220,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::handlers::jack::set_buffersize)
             .service(web::handlers::jack::reset_xruns)
             .service(web::handlers::jack::truebypass)
+            // MIDI Calibration
+            .service(web::handlers::midi_calibration::midi_calibration_get)
+            .service(web::handlers::midi_calibration::midi_calibration_set)
+            .service(web::handlers::midi_calibration::midi_calibration_delete)
             // Auth & Tokens
             .service(web::handlers::auth::auth_nonce)
             .service(web::handlers::auth::auth_token)
@@ -369,7 +379,8 @@ async fn startup_connect(state: std::sync::Arc<AppState>) {
             let mut session = state.session.write().await;
             // Convert raw bank index (-1=All, 0=first user, ...) to internal bank_id
             session.host.bank_id = raw_bank + session.host.userbanks_offset;
-            session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
+            let midi_cal = state.midi_calibration.read().unwrap().clone();
+            session.web_load_pedalboard(&bundlepath, false, &state.settings, &midi_cal).await;
             // Notify HMI of the current bank (HMI bank IDs are bank_id + 1)
             let hmi_bank = session.host.bank_id + 1;
             session.hmi.set_bank_index(hmi_bank, Box::new(|_| {}));
@@ -441,9 +452,10 @@ async fn hmi_command_loop(
                     bundlepath, hmi_bank_id, pb_index
                 );
 
+                let midi_cal = state.midi_calibration.read().unwrap().clone();
                 let mut session = state.session.write().await;
                 session.host.bank_id = bank_id;
-                session.web_load_pedalboard(&bundlepath, false, &state.settings).await;
+                session.web_load_pedalboard(&bundlepath, false, &state.settings, &midi_cal).await;
                 session.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
             }
         }

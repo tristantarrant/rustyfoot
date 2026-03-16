@@ -368,7 +368,12 @@ impl Session {
     }
 
     /// Address a parameter to a MIDI controller or HMI actuator.
-    pub async fn web_parameter_address(&mut self, port: &str, addressing: &serde_json::Value) {
+    pub async fn web_parameter_address(
+        &mut self,
+        port: &str,
+        addressing: &serde_json::Value,
+        midi_cal: &crate::midi_calibration::MidiCalibration,
+    ) {
         let (instance, portsymbol) = match port.rsplit_once('/') {
             Some((i, p)) => (i, p),
             None => return,
@@ -406,8 +411,9 @@ impl Session {
                             (channel, controller, minimum, maximum),
                         );
                     }
+                    let (adj_min, adj_max) = midi_cal.adjust(controller, minimum, maximum);
                     let msg = format!("midi_map {} {} {} {} {} {}",
-                        instance_id, portsymbol, channel, controller, minimum, maximum);
+                        instance_id, portsymbol, channel, controller, adj_min, adj_max);
                     self.host.ipc.send_modified(&msg, None, "boolean").await;
                 }
             }
@@ -625,6 +631,7 @@ impl Session {
         bundlepath: &str,
         is_default: bool,
         settings: &Settings,
+        midi_cal: &crate::midi_calibration::MidiCalibration,
     ) -> Option<String> {
         tracing::info!("[session] loading pedalboard from {}", bundlepath);
         let pb = match crate::lv2_utils::get_pedalboard_info(bundlepath) {
@@ -733,7 +740,7 @@ impl Session {
             }
         };
 
-        self.host.load_pb_plugins(&plugins, &msg_cb).await;
+        self.host.load_pb_plugins(&plugins, &msg_cb, midi_cal).await;
 
         // Load connections
         let connections = pb
@@ -832,7 +839,12 @@ impl Session {
 
     /// Handle a MIDI program change notification from mod-host.
     /// Loads the pedalboard at the given program index within the current bank.
-    pub async fn handle_midi_program_change(&mut self, program: i32, settings: &Settings) {
+    pub async fn handle_midi_program_change(
+        &mut self,
+        program: i32,
+        settings: &Settings,
+        midi_cal: &crate::midi_calibration::MidiCalibration,
+    ) {
         let banks = crate::bank::list_banks(
             &settings.user_banks_json_file,
             &[],
@@ -889,7 +901,7 @@ impl Session {
             program
         );
 
-        self.web_load_pedalboard(&bundlepath, false, settings).await;
+        self.web_load_pedalboard(&bundlepath, false, settings, midi_cal).await;
 
         // Notify the HMI of the pedalboard change
         // Use pchng (set_pedalboard_index) not pb (CMD_PEDALBOARD_LOAD) — pb is for

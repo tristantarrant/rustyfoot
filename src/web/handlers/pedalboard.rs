@@ -91,9 +91,10 @@ pub async fn pedalboard_load_bundle(
         .map(|v| v == "1" || v == "true")
         .unwrap_or(false);
 
+    let midi_cal = state.midi_calibration.read().unwrap().clone();
     let mut session = state.session.write().await;
     match session
-        .web_load_pedalboard(bundlepath, is_default, &state.settings)
+        .web_load_pedalboard(bundlepath, is_default, &state.settings, &midi_cal)
         .await
     {
         Some(name) => HttpResponse::Ok()

@@ -472,7 +472,7 @@ pub async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, state: s
                         .to_string();
                     if !msg.is_empty() {
                         tracing::debug!("[mod-host-reader] received: {}", msg);
-                        handle_mod_host_message(&msg, session, &state.settings).await;
+                        handle_mod_host_message(&msg, session, &state).await;
                     }
                 }
             }
@@ -485,7 +485,8 @@ pub async fn mod_host_read_loop(mut read_stream: tokio::net::TcpStream, state: s
 }
 
 /// Handle an async notification from mod-host.
-async fn handle_mod_host_message(msg: &str, session: &SharedSession, settings: &crate::settings::Settings) {
+async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &crate::AppState) {
+    let settings = &state.settings;
     let parts: Vec<&str> = msg.splitn(2, ' ').collect();
     let cmd = parts[0];
     let data = if parts.len() > 1 { parts[1] } else { "" };
@@ -505,13 +506,27 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, settings: &
 
                 let mut session = session.write().await;
                 if let Some(instance) = session.host.mapper.get_instance(instance_id).map(|s| s.to_string()) {
-                    // Persist the MIDI CC binding so it's saved in the pedalboard TTL
+                    // Persist the MIDI CC binding (original range) so it's saved in the pedalboard TTL
                     if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
                         plugin_data.midi_ccs.insert(
                             portsymbol.to_string(),
                             (channel, controller, minimum, maximum),
                         );
                     }
+                    // Apply calibration: re-send midi_map with adjusted range if needed
+                    let midi_cal = state.midi_calibration.read().unwrap().clone();
+                    let (adj_min, adj_max) = midi_cal.adjust(controller, minimum, maximum);
+                    if (adj_min - minimum).abs() > f64::EPSILON || (adj_max - maximum).abs() > f64::EPSILON {
+                        session.host.ipc
+                            .send_notmodified(
+                                &format!("midi_map {} {} {} {} {} {}",
+                                    instance_id, portsymbol, channel, controller, adj_min, adj_max),
+                                None,
+                                "boolean",
+                            )
+                            .await;
+                    }
+                    // Notify browser with original (uncalibrated) range
                     session.msg_callback(&format!(
                         "midi_map {} {} {} {} {} {}",
                         instance, portsymbol, channel, controller, minimum, maximum
@@ -528,8 +543,9 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, settings: &
             let fields: Vec<&str> = data.split_whitespace().collect();
             if fields.len() >= 2 {
                 if let (Ok(program), Ok(_channel)) = (fields[0].parse::<i32>(), fields[1].parse::<i32>()) {
+                    let midi_cal = state.midi_calibration.read().unwrap().clone();
                     let mut session = session.write().await;
-                    session.handle_midi_program_change(program, settings).await;
+                    session.handle_midi_program_change(program, settings, &midi_cal).await;
                 }
             }
         }

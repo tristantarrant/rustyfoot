@@ -1477,7 +1477,12 @@ impl Host {
     }
 
     /// Load plugins from parsed pedalboard info into mod-host.
-    pub async fn load_pb_plugins(&mut self, plugins: &[Value], msg_callback: &dyn Fn(&str)) {
+    pub async fn load_pb_plugins(
+        &mut self,
+        plugins: &[Value],
+        msg_callback: &dyn Fn(&str),
+        midi_cal: &crate::midi_calibration::MidiCalibration,
+    ) {
         for p in plugins {
             let uri = p.get("uri").and_then(|v| v.as_str()).unwrap_or("");
             let instance_name = p.get("instance").and_then(|v| v.as_str()).unwrap_or("");
@@ -1618,11 +1623,12 @@ impl Host {
                             plugin_data
                                 .midi_ccs
                                 .insert(symbol.to_string(), (ch, ctrl, minimum, maximum));
+                            let (adj_min, adj_max) = midi_cal.adjust(ctrl, minimum, maximum);
                             self.ipc
                                 .send_notmodified(
                                     &format!(
                                         "midi_map {} {} {} {} {} {}",
-                                        instance_id, symbol, ch, ctrl, minimum, maximum
+                                        instance_id, symbol, ch, ctrl, adj_min, adj_max
                                     ),
                                     None,
                                     "boolean",
