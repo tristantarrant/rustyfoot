@@ -503,8 +503,15 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, settings: &
                 let minimum: f64 = fields[5].parse().unwrap_or(0.0);
                 let maximum: f64 = fields[6].parse().unwrap_or(1.0);
 
-                let session = session.read().await;
-                if let Some(instance) = session.host.mapper.get_instance(instance_id) {
+                let mut session = session.write().await;
+                if let Some(instance) = session.host.mapper.get_instance(instance_id).map(|s| s.to_string()) {
+                    // Persist the MIDI CC binding so it's saved in the pedalboard TTL
+                    if let Some(plugin_data) = session.host.plugins.get_mut(&instance_id) {
+                        plugin_data.midi_ccs.insert(
+                            portsymbol.to_string(),
+                            (channel, controller, minimum, maximum),
+                        );
+                    }
                     session.msg_callback(&format!(
                         "midi_map {} {} {} {} {} {}",
                         instance, portsymbol, channel, controller, minimum, maximum

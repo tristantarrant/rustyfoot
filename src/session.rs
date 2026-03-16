@@ -383,11 +383,15 @@ impl Session {
 
         if actuator_uri == "/midi-learn" {
             // Enable MIDI learn for this parameter
+            // The actual CC binding will be stored when the midi_mapped notification arrives
             let msg = format!("midi_learn {} {} {} {}",
                 instance_id, portsymbol, minimum, maximum);
             self.host.ipc.send_modified(&msg, None, "boolean").await;
         } else if actuator_uri == "/midi-unlearn" {
             // Disable MIDI mapping
+            if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
+                plugin_data.midi_ccs.remove(portsymbol);
+            }
             let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
             self.host.ipc.send_modified(&msg, None, "boolean").await;
         } else if actuator_uri.starts_with("/midi-custom_") {
@@ -396,6 +400,12 @@ impl Session {
             let parts: Vec<&str> = cc_str.split('_').collect();
             if parts.len() == 2 {
                 if let (Ok(channel), Ok(controller)) = (parts[0].parse::<i32>(), parts[1].parse::<i32>()) {
+                    if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
+                        plugin_data.midi_ccs.insert(
+                            portsymbol.to_string(),
+                            (channel, controller, minimum, maximum),
+                        );
+                    }
                     let msg = format!("midi_map {} {} {} {} {} {}",
                         instance_id, portsymbol, channel, controller, minimum, maximum);
                     self.host.ipc.send_modified(&msg, None, "boolean").await;
@@ -403,10 +413,12 @@ impl Session {
             }
         } else if actuator_uri == "null" || actuator_uri.is_empty() {
             // Unaddress
+            if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
+                plugin_data.midi_ccs.remove(portsymbol);
+            }
             let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
             self.host.ipc.send_modified(&msg, None, "boolean").await;
         }
-        // HMI addressing would go here but we skip it per project constraints
     }
 
     /// Set plugin position on canvas.
