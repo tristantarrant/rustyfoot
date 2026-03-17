@@ -663,6 +663,12 @@ impl Session {
         let height = pb.get("height").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
         let version = pb.get("version").and_then(|v| v.as_u64()).unwrap_or(0) as i32;
 
+        // Disable processing while loading
+        self.host
+            .ipc
+            .send_notmodified("feature_enable processing 0", None, "boolean")
+            .await;
+
         // Clear current state in mod-host
         self.host
             .ipc
