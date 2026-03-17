@@ -1,6 +1,6 @@
 [Unit]
 Description=Rustyfoot - MOD Audio Web UI
-After=network.target jackd-modhost.service
+After=jackd-modhost.service
 Wants=jackd-modhost.service
 
 [Service]
