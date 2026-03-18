@@ -1536,6 +1536,26 @@ impl Host {
                 );
             }
 
+            // Build a map of port symbol -> designation from plugin info.
+            // Designated ports (enabled, freewheel, transport) need special handling.
+            let mut port_designations: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+            if let Some(ref info) = info {
+                if let Some(inputs) = info
+                    .get("ports")
+                    .and_then(|p| p.get("control"))
+                    .and_then(|c| c.get("input"))
+                    .and_then(|i| i.as_array())
+                {
+                    for port_info in inputs {
+                        let sym = port_info.get("symbol").and_then(|v| v.as_str()).unwrap_or("");
+                        let desig = port_info.get("designation").and_then(|v| v.as_str()).unwrap_or("");
+                        if !desig.is_empty() {
+                            port_designations.insert(sym.to_string(), desig.to_string());
+                        }
+                    }
+                }
+            }
+
             // Send add command to mod-host
             self.ipc
                 .send_notmodified(&format!("add {} {}", uri, instance_id), None, "int")
@@ -1590,7 +1610,21 @@ impl Host {
             if let Some(ports) = p.get("ports").and_then(|v| v.as_array()) {
                 for port in ports {
                     let symbol = port.get("symbol").and_then(|v| v.as_str()).unwrap_or("");
-                    let value = port.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let raw_value = port.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                    // Override values for specially designated ports
+                    let value = match port_designations.get(symbol).map(|s| s.as_str()) {
+                        Some("http://lv2plug.in/ns/lv2core#enabled") => {
+                            if bypassed { 0.0 } else { 1.0 }
+                        }
+                        Some("http://lv2plug.in/ns/lv2core#freeWheeling") => 0.0,
+                        Some("http://lv2plug.in/ns/ext/time#beatsPerBar") => self.transport.bpb,
+                        Some("http://lv2plug.in/ns/ext/time#beatsPerMinute") => self.transport.bpm,
+                        Some("http://lv2plug.in/ns/ext/time#speed") => {
+                            if self.transport.rolling { 1.0 } else { 0.0 }
+                        }
+                        _ => raw_value,
+                    };
 
                     plugin_data.ports.insert(symbol.to_string(), value);
 
