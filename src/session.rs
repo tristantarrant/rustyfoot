@@ -678,6 +678,21 @@ impl Session {
         self.host.plugins = crate::host::plugin::init_plugins_data();
         self.host.connections.clear();
 
+        // Update MIDI aggregated mode from pedalboard
+        let midi_separated_mode = pb.get("midi_separated_mode").and_then(|v| v.as_bool()).unwrap_or(false);
+        let midi_aggregated_mode = !midi_separated_mode;
+        if self.host.midi_aggregated_mode != midi_aggregated_mode {
+            self.host
+                .ipc
+                .send_notmodified(
+                    &format!("feature_enable aggregated-midi {}", if midi_aggregated_mode { 1 } else { 0 }),
+                    None,
+                    "boolean",
+                )
+                .await;
+            self.host.midi_aggregated_mode = midi_aggregated_mode;
+        }
+
         // Tell browser to clear all plugins from canvas (including hardware ports)
         self.msg_callback("remove :all");
 
