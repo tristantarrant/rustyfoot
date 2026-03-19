@@ -1011,6 +1011,9 @@ impl Host {
             }
 
             tracing::debug!("[host] cleared previous session state, processing and MIDI monitoring enabled");
+
+            // Ensure hardware MIDI ports are connected to the merger
+            self.connect_midi_merger_ports();
         }
 
         read_stream
@@ -1019,6 +1022,25 @@ impl Host {
     /// End a UI session (called when last websocket disconnects).
     pub async fn end_session(&mut self) {
         self.web_connected = false;
+    }
+
+    /// Connect hardware MIDI ports to mod-midi-merger input.
+    /// The merger's auto-connect may not work reliably, so we ensure
+    /// the connections are made after startup and after enabling aggregated mode.
+    pub fn connect_midi_merger_ports(&self) {
+        if !self.midi_aggregated_mode {
+            return;
+        }
+        let midi_hw_ports = crate::lv2_utils::get_jack_hardware_ports(false, true);
+        for port in &midi_hw_ports {
+            // Skip Midi-Through ports
+            if let Some(alias) = crate::lv2_utils::get_jack_port_alias(port) {
+                if alias.starts_with("alsa_pcm:Midi-Through/") {
+                    continue;
+                }
+            }
+            crate::lv2_utils::connect_jack_ports(port, "mod-midi-merger:in");
+        }
     }
 
     // -------------------------------------------------------------------------

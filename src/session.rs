@@ -691,6 +691,8 @@ impl Session {
                 )
                 .await;
             self.host.midi_aggregated_mode = midi_aggregated_mode;
+            // Ensure hardware MIDI ports are connected to the merger
+            self.host.connect_midi_merger_ports();
         }
 
         // Tell browser to clear all plugins from canvas (including hardware ports)
