@@ -80,9 +80,30 @@ impl PluginCache {
         self.plugins.read().await.clone().unwrap_or_default()
     }
 
-    /// Force a refresh (e.g. after plugin install/remove)
+    /// Force a refresh (e.g. after plugin install/remove).
+    /// Safe to call from any context (actix handlers, std threads, etc.).
     pub fn refresh(&self) {
-        self.spawn_refresh();
+        let cache = self.clone();
+        tokio::spawn(async move {
+            let plugins = tokio::task::spawn_blocking(|| {
+                tracing::info!("Scanning LV2 plugins...");
+                let start = std::time::Instant::now();
+                let plugins = crate::lv2_utils::get_all_plugins();
+                tracing::info!(
+                    "Plugin scan complete: {} plugins in {:.1}s",
+                    plugins.len(),
+                    start.elapsed().as_secs_f64()
+                );
+                plugins
+            })
+            .await;
+
+            if let Ok(plugins) = plugins {
+                save_to_disk(&cache.cache_file, &plugins);
+                *cache.plugins.write().await = Some(plugins);
+                cache.ready.notify_waiters();
+            }
+        });
     }
 
     /// Watch a directory for new/removed LV2 bundles and auto-refresh.
