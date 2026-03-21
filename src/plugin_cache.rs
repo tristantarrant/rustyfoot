@@ -1,5 +1,6 @@
 // Plugin list cache for fast startup
 // Serves a cached plugin list immediately, refreshes in the background.
+// Watches the user plugin directory for changes via inotify.
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -82,6 +83,86 @@ impl PluginCache {
     /// Force a refresh (e.g. after plugin install/remove)
     pub fn refresh(&self) {
         self.spawn_refresh();
+    }
+
+    /// Watch a directory for new/removed LV2 bundles and auto-refresh.
+    pub fn spawn_watcher(&self, plugin_dir: PathBuf) {
+        use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+
+        let cache = self.clone();
+        std::thread::spawn(move || {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let mut watcher = match RecommendedWatcher::new(tx, Config::default()) {
+                Ok(w) => w,
+                Err(e) => {
+                    tracing::warn!("Failed to create plugin directory watcher: {}", e);
+                    return;
+                }
+            };
+            if let Err(e) = watcher.watch(&plugin_dir, RecursiveMode::NonRecursive) {
+                tracing::warn!("Failed to watch {}: {}", plugin_dir.display(), e);
+                return;
+            }
+            tracing::info!("Watching {} for plugin changes", plugin_dir.display());
+
+            // Debounce: collect events for 2s before triggering a refresh
+            loop {
+                // Block until first event
+                let event = match rx.recv() {
+                    Ok(e) => e,
+                    Err(_) => break,
+                };
+                // Drain any additional events within the debounce window
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+                let mut events = vec![event];
+                loop {
+                    let timeout = deadline.saturating_duration_since(std::time::Instant::now());
+                    if timeout.is_zero() {
+                        break;
+                    }
+                    match rx.recv_timeout(timeout) {
+                        Ok(e) => events.push(e),
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => break,
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return,
+                    }
+                }
+
+                // Process the batch: add/remove bundles from lilv world
+                let mut changed = false;
+                for event in events {
+                    let event = match event {
+                        Ok(e) => e,
+                        Err(_) => continue,
+                    };
+                    for path in &event.paths {
+                        let is_lv2 = path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .is_some_and(|n| n.ends_with(".lv2"));
+                        if !is_lv2 {
+                            continue;
+                        }
+                        let bundle = path.to_string_lossy();
+                        match event.kind {
+                            EventKind::Create(_) => {
+                                tracing::info!("New plugin bundle detected: {}", bundle);
+                                crate::lv2_utils::add_bundle_to_lilv_world(&bundle);
+                                changed = true;
+                            }
+                            EventKind::Remove(_) => {
+                                tracing::info!("Plugin bundle removed: {}", bundle);
+                                crate::lv2_utils::remove_bundle_from_lilv_world(&bundle, None);
+                                changed = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                if changed {
+                    cache.refresh();
+                }
+            }
+        });
     }
 }
 

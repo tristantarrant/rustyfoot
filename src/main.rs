@@ -132,6 +132,11 @@ async fn main() -> std::io::Result<()> {
     // Start background plugin scan (serves disk cache immediately if available)
     app_state.plugin_cache.spawn_refresh();
 
+    // Watch user plugin directory for new/removed bundles
+    app_state
+        .plugin_cache
+        .spawn_watcher(app_state.settings.lv2_plugin_dir.clone());
+
     // Connect to mod-host, enable MIDI monitoring, and load last pedalboard at startup
     // (don't wait for a browser to connect)
     {
