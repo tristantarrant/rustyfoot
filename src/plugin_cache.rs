@@ -111,6 +111,7 @@ impl PluginCache {
         use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
         let cache = self.clone();
+        let rt = tokio::runtime::Handle::current();
         std::thread::spawn(move || {
             let (tx, rx) = std::sync::mpsc::channel();
             let mut watcher = match RecommendedWatcher::new(tx, Config::default()) {
@@ -180,7 +181,20 @@ impl PluginCache {
                     }
                 }
                 if changed {
-                    cache.refresh();
+                    tracing::info!("Scanning LV2 plugins...");
+                    let start = std::time::Instant::now();
+                    let plugins = crate::lv2_utils::get_all_plugins();
+                    tracing::info!(
+                        "Plugin scan complete: {} plugins in {:.1}s",
+                        plugins.len(),
+                        start.elapsed().as_secs_f64()
+                    );
+                    save_to_disk(&cache.cache_file, &plugins);
+                    let cache2 = cache.clone();
+                    rt.spawn(async move {
+                        *cache2.plugins.write().await = Some(plugins);
+                        cache2.ready.notify_waiters();
+                    });
                 }
             }
         });
