@@ -83,10 +83,14 @@ async fn main() -> std::io::Result<()> {
     lv2_utils::init();
 
     // Initialize JACK client (needed for MIDI device listing, audio ports, etc.)
-    if lv2_utils::init_jack() {
-        tracing::debug!("JACK client initialized");
-    } else {
-        tracing::warn!("Failed to initialize JACK client");
+    // Retry until JACK server is available (jackd-modhost may still be starting).
+    loop {
+        if lv2_utils::init_jack() {
+            tracing::debug!("JACK client initialized");
+            break;
+        }
+        tracing::info!("JACK server not ready, retrying in 1s...");
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
     let bind_addr = if settings.desktop {
@@ -354,10 +358,17 @@ fn install_factory_pedalboards(ui_dir: &std::path::Path, pedalboards_dir: &std::
 async fn startup_connect(state: std::sync::Arc<AppState>) {
     use std::sync::atomic::Ordering;
 
-    // Connect to mod-host
-    let read_stream = {
-        let mut session = state.session.write().await;
-        session.host.start_session().await
+    // Connect to mod-host, retrying until it becomes available
+    let read_stream = loop {
+        let result = {
+            let mut session = state.session.write().await;
+            session.host.start_session().await
+        };
+        if result.is_some() {
+            break result;
+        }
+        tracing::info!("[startup] mod-host not ready, retrying in 1s...");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     };
 
     // Spawn the notification read loop
