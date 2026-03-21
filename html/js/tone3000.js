@@ -184,6 +184,7 @@ var tone3000 = {
                     '<p style="margin:15px 0;white-space:pre-line;">' + (item.description || 'No description available.') + '</p>' +
                     '<div id="tone3000-detail-actions" style="margin-top:20px;">' +
                         '<button class="btn js-tone3000-install" style="margin-right:10px;">Install</button>' +
+                        (item.url ? '<a href="' + item.url + '" target="_blank" class="btn" style="margin-right:10px;text-decoration:none;">View on Tone3000</a>' : '') +
                         '<button class="btn js-tone3000-close">Close</button>' +
                     '</div>' +
                     '<div id="tone3000-detail-status" style="margin-top:15px;display:none;"></div>' +
