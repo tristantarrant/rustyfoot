@@ -149,39 +149,24 @@ impl PluginCache {
                     }
                 }
 
-                // Process the batch: add/remove bundles from lilv world
-                let mut changed = false;
-                for event in events {
+                // Check if any .lv2 bundles were affected
+                let changed = events.iter().any(|event| {
                     let event = match event {
                         Ok(e) => e,
-                        Err(_) => continue,
+                        Err(_) => return false,
                     };
-                    for path in &event.paths {
-                        let is_lv2 = path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .is_some_and(|n| n.ends_with(".lv2"));
-                        if !is_lv2 {
-                            continue;
-                        }
-                        let bundle = path.to_string_lossy();
-                        match event.kind {
-                            EventKind::Create(_) => {
-                                tracing::info!("New plugin bundle detected: {}", bundle);
-                                crate::lv2_utils::add_bundle_to_lilv_world(&bundle);
-                                changed = true;
-                            }
-                            EventKind::Remove(_) => {
-                                tracing::info!("Plugin bundle removed: {}", bundle);
-                                crate::lv2_utils::remove_bundle_from_lilv_world(&bundle, None);
-                                changed = true;
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                    matches!(event.kind, EventKind::Create(_) | EventKind::Remove(_))
+                        && event.paths.iter().any(|p| {
+                            p.file_name()
+                                .and_then(|n| n.to_str())
+                                .is_some_and(|n| n.ends_with(".lv2"))
+                        })
+                });
                 if changed {
-                    tracing::info!("Scanning LV2 plugins...");
+                    tracing::info!("Plugin directory changed, rescanning...");
+                    // Reinitialize lilv world to pick up additions and removals
+                    crate::lv2_utils::cleanup();
+                    crate::lv2_utils::init();
                     let start = std::time::Instant::now();
                     let plugins = crate::lv2_utils::get_all_plugins();
                     tracing::info!(
