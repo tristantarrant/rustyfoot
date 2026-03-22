@@ -143,7 +143,7 @@ impl TcpHmi {
             };
 
             if !was_connected {
-                tracing::info!("[hmi] connecting to {}:{}...", host, port);
+                tracing::debug!("[hmi] connecting to {}:{}...", host, port);
             }
 
             match TcpStream::connect((host.as_str(), port)).await {
