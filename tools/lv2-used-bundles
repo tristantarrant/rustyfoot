@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# Lists LV2 bundles used by pedalboards.
+#
+# Usage:
+#   lv2-used-bundles [--unused|--summary] [pedalboards_dir] [lv2_dir...]
+#
+# Defaults:
+#   pedalboards_dir = $MOD_USER_PEDALBOARDS_DIR or /var/lib/rustyfoot/pedalboards
+#   lv2_dir         = directories from $LV2_PATH, or /usr/lib/lv2
+#
+# Output modes:
+#   (default)    list used bundle directory names, one per line
+#   --unused     list unused bundle directory names instead
+#   --summary    print counts of used, unused, total
+
+set -euo pipefail
+
+MODE="used"
+POSITIONAL=()
+for arg in "$@"; do
+  case "$arg" in
+    --unused)  MODE="unused" ;;
+    --summary) MODE="summary" ;;
+    -h|--help)
+      sed -n '2,/^$/s/^# \?//p' "$0"
+      exit 0
+      ;;
+    *)         POSITIONAL+=("$arg") ;;
+  esac
+done
+
+PEDALBOARDS_DIR="${POSITIONAL[0]:-${MOD_USER_PEDALBOARDS_DIR:-/var/lib/rustyfoot/pedalboards}}"
+
+# Collect LV2 directories
+LV2_DIRS=()
+if [ ${#POSITIONAL[@]} -gt 1 ]; then
+  for ((i=1; i<${#POSITIONAL[@]}; i++)); do
+    LV2_DIRS+=("${POSITIONAL[$i]}")
+  done
+elif [ -n "${LV2_PATH:-}" ]; then
+  IFS=: read -ra LV2_DIRS <<< "$LV2_PATH"
+else
+  LV2_DIRS=(/usr/lib/lv2)
+fi
+
+# 1. Extract all unique plugin URIs from pedalboard TTL files
+URIS=$(grep -rh 'lv2:prototype' "$PEDALBOARDS_DIR" --include='*.ttl' 2>/dev/null \
+  | grep -oP '<[^>]+>' | tr -d '<>' | sort -u)
+
+if [ -z "$URIS" ]; then
+  echo "No pedalboards found in $PEDALBOARDS_DIR" >&2
+  exit 1
+fi
+
+# 2. Build URI -> bundle mapping from manifest.ttl files
+# Handles various TTL formats: URI on same line or preceding line
+declare -A URI_TO_BUNDLE
+for lv2_dir in "${LV2_DIRS[@]}"; do
+  [ -d "$lv2_dir" ] || continue
+  for manifest in "$lv2_dir"/*/manifest.ttl; do
+    [ -f "$manifest" ] || continue
+    bundle_dir=$(dirname "$manifest")
+    bundle_name=$(basename "$bundle_dir")
+
+    # Extract all URIs that are declared as plugins
+    # Match: <uri> a lv2:Plugin (same line) or <uri>\n  a lv2:Plugin (next line)
+    while IFS= read -r uri; do
+      [ -n "$uri" ] && URI_TO_BUNDLE["$uri"]="$bundle_name"
+    done < <(python3 -c "
+import re
+with open('$manifest') as f:
+    text = f.read()
+# Parse @prefix declarations
+prefixes = {}
+for m in re.finditer(r'@prefix\s+(\w+):\s*<([^>]+)>', text):
+    prefixes[m.group(1)] = m.group(2)
+# Find plugin declarations: <uri> or prefix:name followed by 'a lv2:Plugin'
+for m in re.finditer(r'(?:<([^>]+)>|(\w+):(\w[\w.-]*))\s*\n?\s*a\s+[^;]*(?:lv2:Plugin|:Plugin)', text):
+    if m.group(1):
+        print(m.group(1))
+    elif m.group(2) in prefixes:
+        print(prefixes[m.group(2)] + m.group(3))
+" 2>/dev/null || true)
+  done
+done
+
+# 3. Find used bundles
+declare -A USED_BUNDLES
+MISSING=0
+for uri in $URIS; do
+  bundle="${URI_TO_BUNDLE[$uri]:-}"
+  if [ -n "$bundle" ]; then
+    USED_BUNDLES["$bundle"]=1
+  else
+    echo "Warning: no bundle found for URI: $uri" >&2
+    MISSING=$((MISSING + 1))
+  fi
+done
+
+# 4. Output
+case "$MODE" in
+  used)
+    for bundle in $(printf '%s\n' "${!USED_BUNDLES[@]}" | sort); do
+      echo "$bundle"
+    done
+    ;;
+  unused)
+    for lv2_dir in "${LV2_DIRS[@]}"; do
+      [ -d "$lv2_dir" ] || continue
+      for bundle_dir in "$lv2_dir"/*.lv2; do
+        [ -d "$bundle_dir" ] || continue
+        bundle=$(basename "$bundle_dir")
+        if [ -z "${USED_BUNDLES[$bundle]:-}" ]; then
+          echo "$bundle"
+        fi
+      done
+    done
+    ;;
+  summary)
+    ALL=0
+    for lv2_dir in "${LV2_DIRS[@]}"; do
+      [ -d "$lv2_dir" ] || continue
+      count=$(find "$lv2_dir" -maxdepth 1 -name '*.lv2' -type d | wc -l)
+      ALL=$((ALL + count))
+    done
+    USED=${#USED_BUNDLES[@]}
+    UNUSED=$((ALL - USED))
+    echo "Total bundles: $ALL"
+    echo "Used by pedalboards: $USED"
+    echo "Unused: $UNUSED"
+    if [ "$MISSING" -gt 0 ]; then
+      echo "Unresolved URIs: $MISSING"
+    fi
+    ;;
+esac
