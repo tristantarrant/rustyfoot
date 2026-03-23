@@ -474,6 +474,41 @@ async fn hmi_command_loop(
                 session.web_load_pedalboard(&bundlepath, false, &state.settings, &midi_cal).await;
                 session.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
             }
+            hmi::HmiCommand::PedalboardSave => {
+                tracing::info!("[hmi-cmd] saving pedalboard");
+                let mut session = state.session.write().await;
+                let title = session.host.pedalboard.name.clone();
+                session.web_save_pedalboard(&title, false, &state.settings).await;
+            }
+            hmi::HmiCommand::MenuItemChange(menu_id, value) => {
+                let mut session = state.session.write().await;
+                match menu_id {
+                    mod_protocol::MENU_ID_TEMPO => {
+                        tracing::info!("[hmi-cmd] setting tempo to {}", value);
+                        session.host.transport.bpm = value;
+                    }
+                    mod_protocol::MENU_ID_BEATS_PER_BAR => {
+                        tracing::info!("[hmi-cmd] setting beats per bar to {}", value);
+                        session.host.transport.bpb = value;
+                    }
+                    mod_protocol::MENU_ID_PLAY_STATUS => {
+                        let rolling = value > 0.0;
+                        tracing::info!("[hmi-cmd] setting play status to {}", rolling);
+                        session.host.transport.rolling = rolling;
+                    }
+                    _ => {
+                        tracing::debug!("[hmi-cmd] unhandled menu item change: id={}, value={}", menu_id, value);
+                        continue;
+                    }
+                }
+                // Send updated transport to mod-host and browser clients
+                let t = &session.host.transport;
+                let rolling_int = if t.rolling { 1 } else { 0 };
+                let cmd = format!("transport {} {} {}", rolling_int, t.bpb, t.bpm);
+                let ws_msg = format!("transport {} {} {} {}", rolling_int, t.bpb, t.bpm, t.sync.as_str());
+                session.host.ipc.send_notmodified(&cmd, None, "int").await;
+                session.msg_callback(&ws_msg);
+            }
         }
     }
 }

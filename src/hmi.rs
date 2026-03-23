@@ -19,6 +19,10 @@ use crate::utils;
 pub enum HmiCommand {
     /// Pedalboard load request: (bank_id, pedalboard_index)
     PedalboardLoad(i32, String),
+    /// Pedalboard save request
+    PedalboardSave,
+    /// Menu item change: (menu_id, value)
+    MenuItemChange(i32, f64),
 }
 
 /// Trait for HMI implementations (real TCP or fake).
@@ -279,6 +283,17 @@ impl TcpHmi {
                                 *bank_id as i32,
                                 pb_arg.clone(),
                             ));
+                        }
+                    } else if parsed.cmd == CMD_PEDALBOARD_SAVE {
+                        let _ = guard.cmd_tx.send(HmiCommand::PedalboardSave);
+                    } else if parsed.cmd == CMD_MENU_ITEM_CHANGE && parsed.args.len() >= 2 {
+                        if let protocol::ArgValue::Int(menu_id) = &parsed.args[0] {
+                            let value = match &parsed.args[1] {
+                                protocol::ArgValue::Int(v) => *v as f64,
+                                protocol::ArgValue::Float(v) => *v,
+                                _ => 0.0,
+                            };
+                            let _ = guard.cmd_tx.send(HmiCommand::MenuItemChange(*menu_id as i32, value));
                         }
                     }
 
