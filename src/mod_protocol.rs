@@ -65,7 +65,7 @@ pub fn cmd_args() -> HashMap<&'static str, HashMap<&'static str, Vec<ArgType>>> 
     all.insert("restore", vec![]);
     all.insert("screenshot", vec![Int, Str]);
     all.insert("r", vec![Int]);
-    all.insert("c", vec![Int, Int]);
+    all.insert("c", vec![Int, Float]);
     all.insert("upr", vec![Int]);
     all.insert("ups", vec![Int]);
     all.insert("lp", vec![Int]);

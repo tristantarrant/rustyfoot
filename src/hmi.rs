@@ -269,52 +269,49 @@ impl TcpHmi {
                 tracing::warn!("[hmi] received response but queue is empty: {}", msg);
             }
         } else {
-            // It's a command from HMI — parse and run
+            // It's a command from HMI — parse directly
             tracing::debug!("[hmi] received command: {}", msg);
-            match guard.protocol.parse(msg) {
-                Ok(parsed) => {
-                    // Forward actionable commands to the session handler
-                    if parsed.cmd == CMD_PEDALBOARD_LOAD && parsed.args.len() >= 2 {
-                        if let (
-                            protocol::ArgValue::Int(bank_id),
-                            protocol::ArgValue::Str(pb_arg),
-                        ) = (&parsed.args[0], &parsed.args[1]) {
+            let parts: Vec<&str> = msg.splitn(2, ' ').collect();
+            let cmd = parts[0];
+            let args_str = parts.get(1).copied().unwrap_or("");
+
+            match cmd {
+                CMD_PEDALBOARD_LOAD => {
+                    let args: Vec<&str> = args_str.splitn(2, ' ').collect();
+                    if args.len() >= 2 {
+                        if let Ok(bank_id) = args[0].parse::<i32>() {
                             let _ = guard.cmd_tx.send(HmiCommand::PedalboardLoad(
-                                *bank_id as i32,
-                                pb_arg.clone(),
+                                bank_id,
+                                args[1].to_string(),
                             ));
                         }
-                    } else if parsed.cmd == CMD_PEDALBOARD_SAVE {
-                        let _ = guard.cmd_tx.send(HmiCommand::PedalboardSave);
-                    } else if parsed.cmd == CMD_MENU_ITEM_CHANGE && parsed.args.len() >= 2 {
-                        if let protocol::ArgValue::Int(menu_id) = &parsed.args[0] {
-                            let value = match &parsed.args[1] {
-                                protocol::ArgValue::Int(v) => *v as f64,
-                                protocol::ArgValue::Float(v) => *v,
-                                _ => 0.0,
-                            };
-                            let _ = guard.cmd_tx.send(HmiCommand::MenuItemChange(*menu_id as i32, value));
+                    }
+                }
+                CMD_PEDALBOARD_SAVE => {
+                    let _ = guard.cmd_tx.send(HmiCommand::PedalboardSave);
+                }
+                CMD_MENU_ITEM_CHANGE => {
+                    let args: Vec<&str> = args_str.splitn(2, ' ').collect();
+                    if args.len() >= 2 {
+                        if let (Ok(menu_id), Ok(value)) = (args[0].parse::<i32>(), args[1].parse::<f64>()) {
+                            let _ = guard.cmd_tx.send(HmiCommand::MenuItemChange(menu_id, value));
                         }
                     }
+                }
+                _ => {
+                    tracing::debug!("[hmi] unhandled command from HMI: {}", msg);
+                }
+            }
 
-                    guard.handling_response = true;
-                    let resp_msg = format!("{} 0", CMD_RESPONSE);
-                    if let Some(ref mut stream) = guard.stream {
-                        let data = format!("{}\0", resp_msg);
-                        let _ = stream.write_all(data.as_bytes()).await;
-                    }
-                    guard.handling_response = false;
-                    if guard.queue_idle {
-                        Self::process_queue_inner(&mut guard).await;
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("[hmi] error parsing command '{}': {}", msg, e);
-                    let error_resp = format!("{} -1\0", CMD_RESPONSE);
-                    if let Some(ref mut stream) = guard.stream {
-                        let _ = stream.write_all(error_resp.as_bytes()).await;
-                    }
-                }
+            guard.handling_response = true;
+            let resp_msg = format!("{} 0", CMD_RESPONSE);
+            if let Some(ref mut stream) = guard.stream {
+                let data = format!("{}\0", resp_msg);
+                let _ = stream.write_all(data.as_bytes()).await;
+            }
+            guard.handling_response = false;
+            if guard.queue_idle {
+                Self::process_queue_inner(&mut guard).await;
             }
         }
     }
