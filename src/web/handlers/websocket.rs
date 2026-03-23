@@ -562,13 +562,44 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &cra
                 let bpb: f64 = fields[1].parse().unwrap_or(4.0);
                 let bpm: f64 = fields[2].parse().unwrap_or(120.0);
 
-                let session = session.read().await;
+                let mut session = session.write().await;
+                let rolling_changed = session.host.transport.rolling != rolling;
+                let bpm_changed = session.host.transport.bpm != bpm;
+                let bpb_changed = session.host.transport.bpb != bpb;
+                session.host.transport.rolling = rolling;
+                session.host.transport.bpm = bpm;
+                session.host.transport.bpb = bpb;
+
+                // Notify browser clients
                 session.msg_callback(&format!(
                     "transport {} {} {} {}",
                     if rolling { 1 } else { 0 },
                     bpb, bpm,
                     session.host.transport.sync.as_str()
                 ));
+
+                // Notify HMI
+                if rolling_changed {
+                    session.hmi.set_profile_value(
+                        crate::mod_protocol::MENU_ID_PLAY_STATUS,
+                        if rolling { 1.0 } else { 0.0 },
+                        Box::new(|_| {}),
+                    );
+                }
+                if bpm_changed {
+                    session.hmi.set_profile_value(
+                        crate::mod_protocol::MENU_ID_TEMPO,
+                        bpm,
+                        Box::new(|_| {}),
+                    );
+                }
+                if bpb_changed {
+                    session.hmi.set_profile_value(
+                        crate::mod_protocol::MENU_ID_BEATS_PER_BAR,
+                        bpb,
+                        Box::new(|_| {}),
+                    );
+                }
             }
         }
         "output_set" => {

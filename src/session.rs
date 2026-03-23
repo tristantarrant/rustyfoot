@@ -760,6 +760,23 @@ impl Session {
             self.host.transport.sync.as_str(),
         ));
 
+        // Send transport state to HMI
+        self.hmi.set_profile_value(
+            crate::mod_protocol::MENU_ID_TEMPO,
+            self.host.transport.bpm,
+            Box::new(|_| {}),
+        );
+        self.hmi.set_profile_value(
+            crate::mod_protocol::MENU_ID_BEATS_PER_BAR,
+            self.host.transport.bpb,
+            Box::new(|_| {}),
+        );
+        self.hmi.set_profile_value(
+            crate::mod_protocol::MENU_ID_PLAY_STATUS,
+            if self.host.transport.rolling { 1.0 } else { 0.0 },
+            Box::new(|_| {}),
+        );
+
         // Load plugins
         let plugins = pb
             .get("plugins")
