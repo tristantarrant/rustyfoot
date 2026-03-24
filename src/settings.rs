@@ -127,6 +127,10 @@ pub struct Settings {
     pub untitled_pedalboard_name: String,
     pub default_snapshot_name: String,
 
+    // MIDI program change channel routing (0-based, -1 = disabled)
+    pub midi_pedalboard_channel: i32,
+    pub midi_snapshot_channel: i32,
+
     // Audio paths
     pub capture_path: PathBuf,
     pub playback_path: PathBuf,
@@ -310,6 +314,9 @@ impl Settings {
 
             untitled_pedalboard_name: "Untitled Pedalboard".into(),
             default_snapshot_name: "Default".into(),
+
+            midi_pedalboard_channel: env_int("MOD_MIDI_PEDALBOARD_CHANNEL", 0),
+            midi_snapshot_channel: env_int("MOD_MIDI_SNAPSHOT_CHANNEL", -1),
 
             capture_path: PathBuf::from("/tmp/capture.ogg"),
             playback_path: PathBuf::from("/tmp/playback.ogg"),

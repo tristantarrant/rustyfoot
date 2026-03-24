@@ -547,10 +547,10 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &cra
             // Format: program channel (channel is 0-based from mod-host)
             let fields: Vec<&str> = data.split_whitespace().collect();
             if fields.len() >= 2 {
-                if let (Ok(program), Ok(_channel)) = (fields[0].parse::<i32>(), fields[1].parse::<i32>()) {
+                if let (Ok(program), Ok(channel)) = (fields[0].parse::<i32>(), fields[1].parse::<i32>()) {
                     let midi_cal = state.midi_calibration.read().unwrap().clone();
                     let mut session = session.write().await;
-                    session.handle_midi_program_change(program, settings, &midi_cal).await;
+                    session.handle_midi_program_change(program, channel, settings, &midi_cal).await;
                 }
             }
         }

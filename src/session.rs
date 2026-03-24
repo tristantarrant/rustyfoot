@@ -961,8 +961,89 @@ impl Session {
     // MIDI program change
 
     /// Handle a MIDI program change notification from mod-host.
-    /// Loads the pedalboard at the given program index within the current bank.
+    /// Routes to pedalboard load or snapshot load based on channel settings.
     pub async fn handle_midi_program_change(
+        &mut self,
+        program: i32,
+        channel: i32,
+        settings: &Settings,
+        midi_cal: &crate::midi_calibration::MidiCalibration,
+    ) {
+        // Route based on channel: snapshot channel takes priority if configured
+        if settings.midi_snapshot_channel >= 0 && channel == settings.midi_snapshot_channel {
+            self.handle_midi_snapshot_change(program).await;
+        } else if settings.midi_pedalboard_channel < 0 || channel == settings.midi_pedalboard_channel {
+            self.handle_midi_pedalboard_change(program, settings, midi_cal).await;
+        } else {
+            tracing::debug!(
+                "[session] MIDI program change on unhandled channel {} (program {})",
+                channel, program
+            );
+        }
+    }
+
+    /// Load a snapshot by MIDI program change index.
+    async fn handle_midi_snapshot_change(&mut self, program: i32) {
+        let idx = program;
+        if idx < 0 || (idx as usize) >= self.host.pedalboard.snapshots.len() {
+            tracing::warn!(
+                "[session] MIDI snapshot {} out of range (pedalboard has {} snapshots)",
+                program,
+                self.host.pedalboard.snapshots.len()
+            );
+            return;
+        }
+        if self.host.pedalboard.snapshots[idx as usize].is_none() {
+            tracing::warn!("[session] MIDI snapshot {} is empty", program);
+            return;
+        }
+
+        tracing::info!("[session] MIDI program change: loading snapshot {} on channel", program);
+
+        let ws_broadcast = self.ws_broadcast.clone();
+        let msg_cb = |msg: &str| {
+            if let Some(ref tx) = ws_broadcast {
+                let _ = tx.send(msg.to_string());
+            }
+        };
+        self.host.snapshot_load(idx, &msg_cb).await;
+
+        // Notify HMI of updated snapshot list
+        let current = self.host.pedalboard.current_snapshot_id;
+        let names: Vec<String> = self
+            .host
+            .pedalboard
+            .snapshots
+            .iter()
+            .map(|s| {
+                s.as_ref()
+                    .map(|snap| {
+                        let mut result = String::with_capacity(snap.name.len() * 2);
+                        for b in snap.name.bytes() {
+                            match b {
+                                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                                    result.push(b as char);
+                                }
+                                _ => {
+                                    result.push_str(&format!("%{:02X}", b));
+                                }
+                            }
+                        }
+                        result
+                    })
+                    .unwrap_or_default()
+            })
+            .collect();
+        let msg = if names.is_empty() {
+            format!("{} {}", crate::mod_protocol::CMD_SNAPSHOTS, current)
+        } else {
+            format!("{} {} {}", crate::mod_protocol::CMD_SNAPSHOTS, current, names.join(" "))
+        };
+        self.hmi.send(&msg, None, "int");
+    }
+
+    /// Load a pedalboard by MIDI program change index within the current bank.
+    async fn handle_midi_pedalboard_change(
         &mut self,
         program: i32,
         settings: &Settings,
@@ -975,8 +1056,6 @@ impl Session {
             false,
         );
 
-        // bank_id < userbanks_offset means we're on the "All pedalboards" virtual bank
-        // (or factory bank). In that case, collect all pedalboards from all user banks.
         let bank_index = self.host.bank_id - self.host.userbanks_offset;
 
         let all_pedalboards: Vec<crate::bank::Pedalboard>;
@@ -988,7 +1067,6 @@ impl Session {
                 return;
             }
         } else {
-            // "All" bank: flatten all user banks into one list
             all_pedalboards = banks.iter().flat_map(|b| b.pedalboards.clone()).collect();
             &all_pedalboards
         };
@@ -1027,8 +1105,6 @@ impl Session {
         self.web_load_pedalboard(&bundlepath, false, settings, midi_cal).await;
 
         // Notify the HMI of the pedalboard change
-        // Use pchng (set_pedalboard_index) not pb (CMD_PEDALBOARD_LOAD) — pb is for
-        // HMI→rustyfoot requests and triggers a loadPedalboard callback loop in the HMI.
         self.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
     }
 
