@@ -25,6 +25,14 @@ pub enum HmiCommand {
     MenuItemChange(i32, f64),
     /// File parameter set: (instance, param_uri, path)
     FileParamSet(String, String, String),
+    /// Tuner on
+    TunerOn,
+    /// Tuner off
+    TunerOff,
+    /// Tuner input port change
+    TunerInput(i32),
+    /// Tuner reference frequency change
+    TunerRefFreq(i32),
 }
 
 /// Trait for HMI implementations (real TCP or fake).
@@ -309,6 +317,22 @@ impl TcpHmi {
                             args[1].to_string(),
                             args[2].to_string(),
                         ));
+                    }
+                }
+                CMD_TUNER_ON => {
+                    let _ = guard.cmd_tx.send(HmiCommand::TunerOn);
+                }
+                CMD_TUNER_OFF => {
+                    let _ = guard.cmd_tx.send(HmiCommand::TunerOff);
+                }
+                CMD_TUNER_INPUT => {
+                    if let Ok(port) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::TunerInput(port));
+                    }
+                }
+                CMD_TUNER_REF_FREQ => {
+                    if let Ok(freq) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::TunerRefFreq(freq));
                     }
                 }
                 _ => {

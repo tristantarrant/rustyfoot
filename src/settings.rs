@@ -188,7 +188,7 @@ impl Settings {
         let (tuner_uri, tuner_input_port, tuner_monitor_port) = if tuner == "tuna" {
             ("urn:mod:tuna".into(), "in".into(), "freq_out".into())
         } else {
-            ("urn:mod:gxtuner".into(), "in".into(), "FREQ".into())
+            ("http://guitarix.sourceforge.net/plugins/gxtuner#tuner".into(), "in".into(), "FREQ".into())
         };
 
         let update_os_filename = env_str("MOD_UPDATE_MOD_OS_FILE", "modduo.tar")

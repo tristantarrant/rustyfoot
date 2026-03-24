@@ -610,12 +610,24 @@ async fn handle_mod_host_message(msg: &str, session: &SharedSession, state: &cra
                 let portsymbol = fields[1];
                 let value = fields[2];
 
-                let session = session.read().await;
-                if let Some(instance) = session.host.mapper.get_instance(instance_id) {
-                    session.msg_callback(&format!(
-                        "output_set {} {} {}",
-                        instance, portsymbol, value
-                    ));
+                // Check if this is the tuner instance
+                if instance_id == state.settings.tuner_instance_id
+                    && portsymbol == state.settings.tuner_monitor_port
+                {
+                    if let Ok(freq) = value.parse::<f64>() {
+                        if let Some((f, note, cents)) = crate::tuner::find_freq_note_cents(freq) {
+                            let session = session.read().await;
+                            session.hmi.tuner(f, &note, cents, Box::new(|_| {}));
+                        }
+                    }
+                } else {
+                    let session = session.read().await;
+                    if let Some(instance) = session.host.mapper.get_instance(instance_id) {
+                        session.msg_callback(&format!(
+                            "output_set {} {} {}",
+                            instance, portsymbol, value
+                        ));
+                    }
                 }
             }
         }

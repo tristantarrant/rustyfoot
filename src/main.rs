@@ -510,6 +510,81 @@ async fn hmi_command_loop(
                 let mut session = state.session.write().await;
                 session.ws_patch_set(&full_instance, &uri, "p", &path, None).await;
             }
+            hmi::HmiCommand::TunerOn => {
+                tracing::info!("[hmi-cmd] tuner on");
+                let tuner_id = state.settings.tuner_instance_id;
+                let tuner_uri = &state.settings.tuner_uri;
+                let tuner_input = &state.settings.tuner_input_port;
+                let tuner_monitor = &state.settings.tuner_monitor_port;
+
+                let mut session = state.session.write().await;
+
+                // Add tuner plugin at reserved instance ID
+                session.host.ipc
+                    .send_notmodified(&format!("add {} {}", tuner_uri, tuner_id), None, "int")
+                    .await;
+
+                // Connect system capture to tuner input
+                session.host.ipc
+                    .send_notmodified(
+                        &format!("connect system:capture_1 effect_{}:{}", tuner_id, tuner_input),
+                        None,
+                        "int",
+                    )
+                    .await;
+
+                // Monitor the tuner's frequency output
+                session.host.ipc
+                    .send_notmodified(
+                        &format!("monitor_output {} {}", tuner_id, tuner_monitor),
+                        None,
+                        "int",
+                    )
+                    .await;
+            }
+            hmi::HmiCommand::TunerOff => {
+                tracing::info!("[hmi-cmd] tuner off");
+                let tuner_id = state.settings.tuner_instance_id;
+
+                let mut session = state.session.write().await;
+                session.host.ipc
+                    .send_notmodified(&format!("remove {}", tuner_id), None, "int")
+                    .await;
+            }
+            hmi::HmiCommand::TunerInput(port) => {
+                tracing::info!("[hmi-cmd] tuner input port: {}", port);
+                let tuner_id = state.settings.tuner_instance_id;
+                let tuner_input = &state.settings.tuner_input_port;
+
+                let mut session = state.session.write().await;
+                // Disconnect old, connect new capture port
+                // Port number is 1-based
+                let capture = format!("system:capture_{}", port.max(1));
+                session.host.ipc
+                    .send_notmodified(
+                        &format!("connect {} effect_{}:{}", capture, tuner_id, tuner_input),
+                        None,
+                        "int",
+                    )
+                    .await;
+
+                session.hmi.set_tuner_input(port, Box::new(|_| {}));
+            }
+            hmi::HmiCommand::TunerRefFreq(freq) => {
+                tracing::info!("[hmi-cmd] tuner reference frequency: {}", freq);
+                let tuner_id = state.settings.tuner_instance_id;
+
+                let mut session = state.session.write().await;
+                session.host.ipc
+                    .send_notmodified(
+                        &format!("param_set {} REFFREQ {}", tuner_id, freq),
+                        None,
+                        "int",
+                    )
+                    .await;
+
+                session.hmi.set_tuner_ref_freq(freq, Box::new(|_| {}));
+            }
             hmi::HmiCommand::MenuItemChange(menu_id, value) => {
                 let mut session = state.session.write().await;
                 match menu_id {
