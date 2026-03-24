@@ -27,6 +27,10 @@ case "$1" in
         if [ ! -d /var/lib/rustyfoot/pedalboards/default.pedalboard ]; then
             cp -a /usr/share/rustyfoot/default.pedalboard /var/lib/rustyfoot/pedalboards/
         fi
+        # Install default profile if not present
+        if [ ! -f /var/lib/rustyfoot/profile1.json ]; then
+            cp /usr/share/rustyfoot/default-profile.json /var/lib/rustyfoot/profile1.json
+        fi
         # Cache directory for shader cache etc.
         mkdir -p /var/cache/rustyfoot
         chown modhost:modhost /var/cache/rustyfoot

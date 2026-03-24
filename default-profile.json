@@ -1,0 +1,20 @@
+{
+  "midiPrgChChannel": 1,
+  "midiSnapshotPrgChChannel": 2,
+  "inputGain1": 0.0,
+  "inputGain2": 0.0,
+  "output1volume": 0.0,
+  "output2volume": 0.0,
+  "headphoneVolume": -12.0,
+  "configInputMode": 0,
+  "configOutputMode": 0,
+  "expPedalMode": 1,
+  "headphoneBypass": false,
+  "masterVolumeChannelMode": 0,
+  "transportSource": 0,
+  "inputStereoLink": false,
+  "outputStereoLink": false,
+  "sendMidiBeatClock": false,
+  "tempoBPM": 120.0,
+  "tempoBPB": 4.0
+}

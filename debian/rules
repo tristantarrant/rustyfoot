@@ -19,6 +19,8 @@ override_dh_auto_install:
 	mkdir -p debian/rustyfoot/usr/share/rustyfoot/default.pedalboard
 	cp -a default.pedalboard/* debian/rustyfoot/usr/share/rustyfoot/default.pedalboard/
 	cp -a factory-pedalboards debian/rustyfoot/usr/share/rustyfoot/factory-pedalboards
+	# Install default profile
+	install -D -m 644 default-profile.json debian/rustyfoot/usr/share/rustyfoot/default-profile.json
 
 override_dh_auto_test:
 	# Skip tests during build
