@@ -67,6 +67,74 @@ fn save_last_bank_and_pedalboard(settings: &Settings, bank_id: i32, userbanks_of
     }
 }
 
+/// Remove stale symlinks from effect directories after state_save.
+/// mod-host creates symlinks for file parameters but never removes old ones.
+/// After state_save, each effect directory's effect.ttl references the current
+/// files; any symlinks not referenced are stale and can be removed.
+fn cleanup_effect_symlinks(bundlepath: &std::path::Path) {
+    let entries = match std::fs::read_dir(bundlepath) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let dir_name = path.file_name().unwrap_or_default().to_string_lossy();
+        if !dir_name.starts_with("effect-") {
+            continue;
+        }
+
+        // Read effect.ttl to find referenced files
+        let effect_ttl = path.join("effect.ttl");
+        let ttl_content = match std::fs::read_to_string(&effect_ttl) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Extract referenced filenames from effect.ttl by URL-decoding angle-bracket values
+        let mut referenced: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for cap in regex::Regex::new(r">\s+<([^>]+)>")
+            .unwrap()
+            .captures_iter(&ttl_content)
+        {
+            if let Some(m) = cap.get(1) {
+                let val = m.as_str();
+                // Skip full URIs
+                if val.starts_with("http://") || val.starts_with("https://") {
+                    continue;
+                }
+                if let Ok(decoded) = urlencoding::decode(val) {
+                    referenced.insert(decoded.into_owned());
+                }
+            }
+        }
+
+        // Remove symlinks not referenced by the current state
+        let dir_entries = match std::fs::read_dir(&path) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        for file_entry in dir_entries.flatten() {
+            let file_path = file_entry.path();
+            if !file_path.is_symlink() {
+                continue;
+            }
+            let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
+            if !referenced.contains(&*file_name) {
+                tracing::debug!(
+                    "[session] removing stale symlink: {}",
+                    file_path.display()
+                );
+                let _ = std::fs::remove_file(&file_path);
+            }
+        }
+    }
+}
+
 /// User preferences (JSON-backed key-value store).
 pub struct UserPreferences {
     pub prefs: HashMap<String, Value>,
@@ -618,6 +686,9 @@ impl Session {
                 "boolean",
             )
             .await;
+
+        // Clean up stale symlinks in effect directories
+        cleanup_effect_symlinks(std::path::Path::new(&bundlepath));
 
         // Reset pedalboard cache so new pedalboard shows in list
         crate::lv2_utils::reset_get_all_pedalboards_cache(
