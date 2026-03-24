@@ -23,6 +23,8 @@ pub enum HmiCommand {
     PedalboardSave,
     /// Menu item change: (menu_id, value)
     MenuItemChange(i32, f64),
+    /// File parameter set: (instance, param_uri, path)
+    FileParamSet(String, String, String),
 }
 
 /// Trait for HMI implementations (real TCP or fake).
@@ -296,6 +298,17 @@ impl TcpHmi {
                         if let (Ok(menu_id), Ok(value)) = (args[0].parse::<i32>(), args[1].parse::<f64>()) {
                             let _ = guard.cmd_tx.send(HmiCommand::MenuItemChange(menu_id, value));
                         }
+                    }
+                }
+                CMD_FILE_PARAM_SET => {
+                    // fps <instance> <param_uri> <path>
+                    let args: Vec<&str> = args_str.splitn(3, ' ').collect();
+                    if args.len() >= 3 {
+                        let _ = guard.cmd_tx.send(HmiCommand::FileParamSet(
+                            args[0].to_string(),
+                            args[1].to_string(),
+                            args[2].to_string(),
+                        ));
                     }
                 }
                 _ => {

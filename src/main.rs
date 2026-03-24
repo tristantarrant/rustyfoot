@@ -480,6 +480,11 @@ async fn hmi_command_loop(
                 let title = session.host.pedalboard.name.clone();
                 session.web_save_pedalboard(&title, false, &state.settings).await;
             }
+            hmi::HmiCommand::FileParamSet(instance, uri, path) => {
+                tracing::info!("[hmi-cmd] file param set: {} {} = {}", instance, uri, path);
+                let mut session = state.session.write().await;
+                session.ws_patch_set(&instance, &uri, "p", &path, None).await;
+            }
             hmi::HmiCommand::MenuItemChange(menu_id, value) => {
                 let mut session = state.session.write().await;
                 match menu_id {
