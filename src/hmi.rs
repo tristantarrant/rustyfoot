@@ -66,6 +66,12 @@ pub enum HmiCommand {
     SnapshotDelete(i32),
     /// Rename snapshot: (index, new_name)
     SnapshotRename(i32, String),
+    /// Request profile list
+    ProfileList,
+    /// Load profile by index (1-based)
+    ProfileLoad(i32),
+    /// Store current settings to profile index (1-based)
+    ProfileStore(i32),
 }
 
 /// Trait for HMI implementations (real TCP or fake).
@@ -401,6 +407,19 @@ impl TcpHmi {
                             let name = percent_decode_str(args[1]);
                             let _ = guard.cmd_tx.send(HmiCommand::SnapshotRename(index, name));
                         }
+                    }
+                }
+                CMD_PROFILE_LOAD => {
+                    if args_str.trim().is_empty() {
+                        // No args = request profile list
+                        let _ = guard.cmd_tx.send(HmiCommand::ProfileList);
+                    } else if let Ok(index) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::ProfileLoad(index));
+                    }
+                }
+                CMD_PROFILE_STORE => {
+                    if let Ok(index) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::ProfileStore(index));
                     }
                 }
                 _ => {

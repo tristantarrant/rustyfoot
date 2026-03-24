@@ -466,6 +466,21 @@ fn send_snapshot_list_to_hmi(session: &session::Session) {
     session.hmi.send(&msg, None, "int");
 }
 
+/// Send the profile list to the HMI.
+fn send_profile_list_to_hmi(session: &session::Session) {
+    let current = session.profile.get_index();
+    let names: Vec<String> = (1..=4)
+        .map(|i| percent_encode(&format!("Profile {}", i)))
+        .collect();
+    let msg = format!(
+        "{} {} {}",
+        mod_protocol::CMD_PROFILE_LOAD,
+        current,
+        names.join(" ")
+    );
+    session.hmi.send(&msg, None, "int");
+}
+
 /// Handle commands received from the HMI (pedalboard load requests, etc.).
 async fn hmi_command_loop(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<hmi::HmiCommand>,
@@ -669,6 +684,23 @@ async fn hmi_command_loop(
                 session.host.pedalboard.snapshot_rename(index, &name);
                 send_snapshot_list_to_hmi(&session);
             }
+            hmi::HmiCommand::ProfileList => {
+                tracing::info!("[hmi-cmd] profile list requested");
+                let session = state.session.read().await;
+                send_profile_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::ProfileLoad(index) => {
+                tracing::info!("[hmi-cmd] loading profile {}", index);
+                let mut session = state.session.write().await;
+                session.profile.retrieve(index);
+                send_profile_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::ProfileStore(index) => {
+                tracing::info!("[hmi-cmd] storing profile {}", index);
+                let mut session = state.session.write().await;
+                session.profile.store(index);
+                send_profile_list_to_hmi(&session);
+            }
             hmi::HmiCommand::MenuItemChange(menu_id, value) => {
                 let mut session = state.session.write().await;
                 match menu_id {
@@ -684,6 +716,18 @@ async fn hmi_command_loop(
                         let rolling = value > 0.0;
                         tracing::info!("[hmi-cmd] setting play status to {}", rolling);
                         session.host.transport.rolling = rolling;
+                    }
+                    mod_protocol::MENU_ID_PB_PRGCHNGE => {
+                        let channel = value as i32;
+                        tracing::info!("[hmi-cmd] setting pedalboard MIDI channel to {}", channel);
+                        session.profile.set_value("midiPrgChChannel", serde_json::Value::from(channel));
+                        continue;
+                    }
+                    mod_protocol::MENU_ID_SNAPSHOT_PRGCHGE => {
+                        let channel = value as i32;
+                        tracing::info!("[hmi-cmd] setting snapshot MIDI channel to {}", channel);
+                        session.profile.set_value("midiSnapshotPrgChChannel", serde_json::Value::from(channel));
+                        continue;
                     }
                     _ => {
                         tracing::debug!("[hmi-cmd] unhandled menu item change: id={}, value={}", menu_id, value);

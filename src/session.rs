@@ -197,6 +197,7 @@ pub struct Session {
     pub prefs: UserPreferences,
     pub hmi: Box<dyn Hmi>,
     pub host: Host,
+    pub profile: crate::profile::Profile,
     pub recorder: Recorder,
     pub player: Player,
     pub screenshot_generator: ScreenshotGenerator,
@@ -224,6 +225,9 @@ impl Session {
         };
 
         let host = Host::new(settings);
+        let mut profile = crate::profile::Profile::new(settings);
+        // Load profile 1 by default (or whichever was last active)
+        profile.retrieve(1);
         let recorder = Recorder::new(settings);
         let player = Player::new(settings);
         let screenshot_generator = ScreenshotGenerator::new(settings);
@@ -232,6 +236,7 @@ impl Session {
             prefs,
             hmi,
             host,
+            profile,
             recorder,
             player,
             screenshot_generator,
@@ -969,10 +974,15 @@ impl Session {
         settings: &Settings,
         midi_cal: &crate::midi_calibration::MidiCalibration,
     ) {
+        let pb_channel = self.profile.get_midi_prgch_channel("pedalboard");
+        let ss_channel = self.profile.get_midi_prgch_channel("snapshot");
+
         // Route based on channel: snapshot channel takes priority if configured
-        if settings.midi_snapshot_channel >= 0 && channel == settings.midi_snapshot_channel {
+        if ss_channel > 0 && channel == ss_channel - 1 {
+            // Profile channels are 1-based (0 = disabled), mod-host channels are 0-based
             self.handle_midi_snapshot_change(program).await;
-        } else if settings.midi_pedalboard_channel < 0 || channel == settings.midi_pedalboard_channel {
+        } else if pb_channel == 0 || channel == pb_channel - 1 {
+            // pb_channel 0 = accept all channels; otherwise match 1-based to 0-based
             self.handle_midi_pedalboard_change(program, settings, midi_cal).await;
         } else {
             tracing::debug!(
