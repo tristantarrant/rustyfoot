@@ -304,6 +304,7 @@ pub const MENU_ID_HP_CV_OUTPUT: i32 = 41;
 pub const MENU_ID_MASTER_VOL_PORT: i32 = 42;
 pub const MENU_ID_EXP_MODE: i32 = 43;
 pub const MENU_ID_TOP: i32 = 44;
+pub const MENU_ID_DSP_LOAD: i32 = 50;
 
 /// Convert a command wire string to its symbolic name.
 pub fn cmd_to_str(cmd: &str) -> &'static str {

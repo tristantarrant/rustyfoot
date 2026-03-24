@@ -154,6 +154,26 @@ async fn main() -> std::io::Result<()> {
         });
     }
 
+    // Periodically send DSP load to HMI
+    {
+        let state = app_state.clone().into_inner();
+        actix_web::rt::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+            loop {
+                interval.tick().await;
+                let cpu_load = lv2_utils::get_jack_data(false)
+                    .and_then(|d| d.get("cpuLoad").and_then(|v| v.as_f64()))
+                    .unwrap_or(0.0);
+                let session = state.session.read().await;
+                session.hmi.set_profile_value(
+                    mod_protocol::MENU_ID_DSP_LOAD,
+                    cpu_load,
+                    Box::new(|_| {}),
+                );
+            }
+        });
+    }
+
     tracing::info!("Starting rustyfoot on {}:{}", bind_addr, port);
     tracing::debug!("Serving static files from {:?}", html_dir);
 
