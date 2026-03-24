@@ -14,6 +14,27 @@ use crate::mod_protocol::*;
 use crate::protocol::{self, ParsedMessage, Protocol, RespValue};
 use crate::utils;
 
+/// Decode a percent-encoded string (e.g. "Hello%20World" → "Hello World").
+fn percent_decode_str(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let hi = chars.next().unwrap_or(0);
+            let lo = chars.next().unwrap_or(0);
+            let hex = [hi, lo];
+            if let Ok(decoded) = u8::from_str_radix(std::str::from_utf8(&hex).unwrap_or(""), 16) {
+                result.push(decoded as char);
+            }
+        } else if b == b'+' {
+            result.push(' ');
+        } else {
+            result.push(b as char);
+        }
+    }
+    result
+}
+
 /// Commands received from the HMI that need session-level handling.
 #[derive(Debug)]
 pub enum HmiCommand {
@@ -33,6 +54,18 @@ pub enum HmiCommand {
     TunerInput(i32),
     /// Tuner reference frequency change
     TunerRefFreq(i32),
+    /// Request snapshot list
+    SnapshotList,
+    /// Load snapshot by index
+    SnapshotLoad(i32),
+    /// Save current snapshot (overwrite at index)
+    SnapshotSave,
+    /// Save as new snapshot with name
+    SnapshotSaveAs(String),
+    /// Delete snapshot by index
+    SnapshotDelete(i32),
+    /// Rename snapshot: (index, new_name)
+    SnapshotRename(i32, String),
 }
 
 /// Trait for HMI implementations (real TCP or fake).
@@ -333,6 +366,41 @@ impl TcpHmi {
                 CMD_TUNER_REF_FREQ => {
                     if let Ok(freq) = args_str.trim().parse::<i32>() {
                         let _ = guard.cmd_tx.send(HmiCommand::TunerRefFreq(freq));
+                    }
+                }
+                CMD_SNAPSHOTS => {
+                    if args_str.is_empty() {
+                        // Request for snapshot list (no args = HMI asking for list)
+                        let _ = guard.cmd_tx.send(HmiCommand::SnapshotList);
+                    }
+                    // If it has args, it's a response from HMI (shouldn't happen in this direction)
+                }
+                CMD_SNAPSHOTS_LOAD => {
+                    if let Ok(index) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::SnapshotLoad(index));
+                    }
+                }
+                CMD_SNAPSHOTS_SAVE => {
+                    let _ = guard.cmd_tx.send(HmiCommand::SnapshotSave);
+                }
+                CMD_SNAPSHOT_SAVE_AS => {
+                    let name = percent_decode_str(args_str.trim());
+                    if !name.is_empty() {
+                        let _ = guard.cmd_tx.send(HmiCommand::SnapshotSaveAs(name));
+                    }
+                }
+                CMD_SNAPSHOT_DELETE => {
+                    if let Ok(index) = args_str.trim().parse::<i32>() {
+                        let _ = guard.cmd_tx.send(HmiCommand::SnapshotDelete(index));
+                    }
+                }
+                CMD_SNAPSHOT_NAME_SET => {
+                    let args: Vec<&str> = args_str.splitn(2, ' ').collect();
+                    if args.len() >= 2 {
+                        if let Ok(index) = args[0].parse::<i32>() {
+                            let name = percent_decode_str(args[1]);
+                            let _ = guard.cmd_tx.send(HmiCommand::SnapshotRename(index, name));
+                        }
                     }
                 }
                 _ => {

@@ -420,8 +420,50 @@ async fn startup_connect(state: std::sync::Arc<AppState>) {
             // Notify HMI of the current bank (HMI bank IDs are bank_id + 1)
             let hmi_bank = session.host.bank_id + 1;
             session.hmi.set_bank_index(hmi_bank, Box::new(|_| {}));
+            // Send snapshot list to HMI
+            send_snapshot_list_to_hmi(&session);
         }
     }
+}
+
+/// Percent-encode a string for HMI protocol (encode spaces and special chars).
+fn percent_encode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len() * 2);
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                result.push(b as char);
+            }
+            _ => {
+                result.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    result
+}
+
+/// Send the current snapshot list to the HMI.
+fn send_snapshot_list_to_hmi(session: &session::Session) {
+    let current = session.host.pedalboard.current_snapshot_id;
+    let names: Vec<String> = session
+        .host
+        .pedalboard
+        .snapshots
+        .iter()
+        .map(|s| {
+            s.as_ref()
+                .map(|snap| percent_encode(&snap.name))
+                .unwrap_or_default()
+        })
+        .collect();
+
+    let msg = if names.is_empty() {
+        format!("{} {}", mod_protocol::CMD_SNAPSHOTS, current)
+    } else {
+        format!("{} {} {}", mod_protocol::CMD_SNAPSHOTS, current, names.join(" "))
+    };
+
+    session.hmi.send(&msg, None, "int");
 }
 
 /// Handle commands received from the HMI (pedalboard load requests, etc.).
@@ -493,6 +535,7 @@ async fn hmi_command_loop(
                 session.host.bank_id = bank_id;
                 session.web_load_pedalboard(&bundlepath, false, &state.settings, &midi_cal).await;
                 session.hmi.set_pedalboard_index(pb_index as i32, Box::new(|_| {}));
+                send_snapshot_list_to_hmi(&session);
             }
             hmi::HmiCommand::PedalboardSave => {
                 tracing::info!("[hmi-cmd] saving pedalboard");
@@ -584,6 +627,47 @@ async fn hmi_command_loop(
                     .await;
 
                 session.hmi.set_tuner_ref_freq(freq, Box::new(|_| {}));
+            }
+            hmi::HmiCommand::SnapshotList => {
+                tracing::info!("[hmi-cmd] snapshot list requested");
+                let session = state.session.read().await;
+                send_snapshot_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::SnapshotLoad(index) => {
+                tracing::info!("[hmi-cmd] loading snapshot {}", index);
+                let mut session = state.session.write().await;
+                let ws_broadcast = session.ws_broadcast.clone();
+                let msg_cb = |msg: &str| {
+                    if let Some(ref tx) = ws_broadcast {
+                        let _ = tx.send(msg.to_string());
+                    }
+                };
+                session.host.snapshot_load(index, &msg_cb).await;
+                send_snapshot_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::SnapshotSave => {
+                tracing::info!("[hmi-cmd] saving current snapshot");
+                let mut session = state.session.write().await;
+                session.host.snapshot_save();
+                send_snapshot_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::SnapshotSaveAs(name) => {
+                tracing::info!("[hmi-cmd] saving snapshot as '{}'", name);
+                let mut session = state.session.write().await;
+                session.host.snapshot_saveas(&name);
+                send_snapshot_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::SnapshotDelete(index) => {
+                tracing::info!("[hmi-cmd] deleting snapshot {}", index);
+                let mut session = state.session.write().await;
+                session.host.pedalboard.snapshot_delete(index);
+                send_snapshot_list_to_hmi(&session);
+            }
+            hmi::HmiCommand::SnapshotRename(index, name) => {
+                tracing::info!("[hmi-cmd] renaming snapshot {} to '{}'", index, name);
+                let mut session = state.session.write().await;
+                session.host.pedalboard.snapshot_rename(index, &name);
+                send_snapshot_list_to_hmi(&session);
             }
             hmi::HmiCommand::MenuItemChange(menu_id, value) => {
                 let mut session = state.session.write().await;
