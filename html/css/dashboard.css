@@ -37,6 +37,12 @@ body.bg-tweed #bank-pedalboards-result .pedalboard .img,
 body.bg-tweed #pedalboards-library .pedalboard {
     background-image: url(../img/background-tweed.jpg);
 }
+body.bg-rust #pedalboard-dashboard,
+body.bg-rust #bank-library .mod-banks-drag-item .img,
+body.bg-rust #bank-pedalboards-result .pedalboard .img,
+body.bg-rust #pedalboards-library .pedalboard {
+    background-image: url(../img/background-rust.jpg);
+}
 
 #pedalboard-dashboard.dev_api:after {
     content: "DEV API enabled";
