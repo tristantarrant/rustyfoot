@@ -487,7 +487,7 @@ fn send_profile_list_to_hmi(session: &session::Session) {
     let msg = format!(
         "{} {} {}",
         mod_protocol::CMD_PROFILE_LOAD,
-        current - 1, // HMI uses 0-based index
+        current,
         names.join(" ")
     );
     session.hmi.send(&msg, None, "int");
@@ -702,17 +702,15 @@ async fn hmi_command_loop(
                 send_profile_list_to_hmi(&session);
             }
             hmi::HmiCommand::ProfileLoad(index) => {
-                let profile_index = index + 1; // HMI sends 0-based, profiles are 1-based
-                tracing::info!("[hmi-cmd] loading profile {}", profile_index);
+                tracing::info!("[hmi-cmd] loading profile {}", index);
                 let mut session = state.session.write().await;
-                session.profile.retrieve(profile_index);
+                session.profile.retrieve(index);
                 send_profile_list_to_hmi(&session);
             }
             hmi::HmiCommand::ProfileStore(index) => {
-                let profile_index = index + 1; // HMI sends 0-based, profiles are 1-based
-                tracing::info!("[hmi-cmd] storing profile {}", profile_index);
+                tracing::info!("[hmi-cmd] storing profile {}", index);
                 let mut session = state.session.write().await;
-                session.profile.store(profile_index);
+                session.profile.store(index);
                 send_profile_list_to_hmi(&session);
             }
             hmi::HmiCommand::MenuItemChange(menu_id, value) => {
