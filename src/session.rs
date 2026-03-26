@@ -1024,38 +1024,7 @@ impl Session {
         };
         self.host.snapshot_load(idx, &msg_cb).await;
 
-        // Notify HMI of updated snapshot list
-        let current = self.host.pedalboard.current_snapshot_id;
-        let names: Vec<String> = self
-            .host
-            .pedalboard
-            .snapshots
-            .iter()
-            .map(|s| {
-                s.as_ref()
-                    .map(|snap| {
-                        let mut result = String::with_capacity(snap.name.len() * 2);
-                        for b in snap.name.bytes() {
-                            match b {
-                                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                                    result.push(b as char);
-                                }
-                                _ => {
-                                    result.push_str(&format!("%{:02X}", b));
-                                }
-                            }
-                        }
-                        result
-                    })
-                    .unwrap_or_default()
-            })
-            .collect();
-        let msg = if names.is_empty() {
-            format!("{} {}", crate::mod_protocol::CMD_SNAPSHOTS, current)
-        } else {
-            format!("{} {} {}", crate::mod_protocol::CMD_SNAPSHOTS, current, names.join(" "))
-        };
-        self.hmi.send(&msg, None, "int");
+        self.send_snapshot_list_to_hmi();
     }
 
     /// Load a pedalboard by MIDI program change index within the current bank.
@@ -1148,6 +1117,35 @@ impl Session {
     pub fn web_playing_stop(&mut self) {
         self.player.stop();
         self.host.unmute();
+    }
+
+    /// Send the current snapshot list and selection to the HMI.
+    pub fn send_snapshot_list_to_hmi(&self) {
+        let current = self.host.pedalboard.current_snapshot_id;
+        let names: Vec<String> = self
+            .host
+            .pedalboard
+            .snapshots
+            .iter()
+            .map(|s| {
+                s.as_ref()
+                    .map(|snap| utils::percent_encode(&snap.name))
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        let msg = if names.is_empty() {
+            format!("{} {}", crate::mod_protocol::CMD_SNAPSHOTS, current)
+        } else {
+            format!(
+                "{} {} {}",
+                crate::mod_protocol::CMD_SNAPSHOTS,
+                current,
+                names.join(" ")
+            )
+        };
+
+        self.hmi.send(&msg, None, "int");
     }
 }
 

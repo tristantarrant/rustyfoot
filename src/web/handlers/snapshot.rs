@@ -13,6 +13,7 @@ use crate::AppState;
 pub async fn snapshot_save(state: web::Data<AppState>) -> HttpResponse {
     let mut session = state.session.write().await;
     let ok = session.host.snapshot_save();
+    session.send_snapshot_list_to_hmi();
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
         .json(ok)
@@ -36,6 +37,7 @@ pub async fn snapshot_saveas(
 
     let mut session = state.session.write().await;
     let (id, final_title) = session.host.snapshot_saveas(title);
+    session.send_snapshot_list_to_hmi();
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
@@ -63,6 +65,7 @@ pub async fn snapshot_rename(
 
     let mut session = state.session.write().await;
     let ok = session.host.pedalboard.snapshot_rename(id, title);
+    session.send_snapshot_list_to_hmi();
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
@@ -87,6 +90,7 @@ pub async fn snapshot_remove(
 
     let mut session = state.session.write().await;
     let ok = session.host.pedalboard.snapshot_delete(id);
+    session.send_snapshot_list_to_hmi();
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
@@ -153,6 +157,7 @@ pub async fn snapshot_load(
     };
 
     let ok = session.host.snapshot_load(id, &msg_cb).await;
+    session.send_snapshot_list_to_hmi();
 
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))

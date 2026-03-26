@@ -206,3 +206,19 @@ pub fn get_nearest_valid_scalepoint_value(
 
     Some((smallest_pos, options[smallest_pos].0))
 }
+
+/// Percent-encode a string for the HMI protocol.
+pub fn percent_encode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len() * 2);
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                result.push(b as char);
+            }
+            _ => {
+                result.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    result
+}
