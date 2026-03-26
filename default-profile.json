@@ -1,6 +1,7 @@
 {
   "midiPrgChChannel": 1,
   "midiSnapshotPrgChChannel": 2,
+  "midiSnapshotPrgChOffset": 0,
   "inputGain1": 0.0,
   "inputGain2": 0.0,
   "output1volume": 0.0,

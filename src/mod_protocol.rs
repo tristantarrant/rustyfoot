@@ -298,6 +298,7 @@ pub const MENU_ID_BYPASS1: i32 = 11;
 pub const MENU_ID_BYPASS2: i32 = 12;
 pub const MENU_ID_BRIGHTNESS: i32 = 13;
 pub const MENU_ID_CURRENT_PROFILE: i32 = 14;
+pub const MENU_ID_SNAPSHOT_PRGCH_OFFSET: i32 = 15;
 pub const MENU_ID_FOOTSWITCH_NAV: i32 = 30;
 pub const MENU_ID_EXP_CV_INPUT: i32 = 40;
 pub const MENU_ID_HP_CV_OUTPUT: i32 = 41;
@@ -434,6 +435,7 @@ pub fn menu_item_id_to_str(idx: i32) -> &'static str {
         12 => "MENU_ID_BYPASS2",
         13 => "MENU_ID_BRIGHTNESS",
         14 => "MENU_ID_CURRENT_PROFILE",
+        15 => "MENU_ID_SNAPSHOT_PRGCH_OFFSET",
         30 => "MENU_ID_FOOTSWITCH_NAV",
         40 => "MENU_ID_EXP_CV_INPUT",
         41 => "MENU_ID_HP_CV_OUTPUT",

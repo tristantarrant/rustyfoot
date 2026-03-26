@@ -32,6 +32,7 @@ fn default_values() -> HashMap<String, Value> {
     m.insert("headphoneVolume".into(), Value::from(-12.0));
     m.insert("midiPrgChChannel".into(), Value::from(0));
     m.insert("midiSnapshotPrgChChannel".into(), Value::from(0));
+    m.insert("midiSnapshotPrgChOffset".into(), Value::from(0));
     m.insert("configInputMode".into(), Value::from(0));
     m.insert("configOutputMode".into(), Value::from(0));
     m.insert("expPedalMode".into(), Value::from(EXP_MODE_RING));
@@ -43,6 +44,7 @@ fn default_values() -> HashMap<String, Value> {
     m.insert("sendMidiBeatClock".into(), Value::from(false));
     m.insert("tempoBPM".into(), Value::from(120.0));
     m.insert("tempoBPB".into(), Value::from(4.0));
+    m.insert("name".into(), Value::from(""));
     m
 }
 
@@ -69,6 +71,10 @@ impl Profile {
 
     pub fn get_index(&self) -> i32 {
         self.index
+    }
+
+    pub fn get_data_dir(&self) -> &Path {
+        &self.data_dir
     }
 
     pub fn get_value(&self, key: &str) -> Option<&Value> {
@@ -104,6 +110,13 @@ impl Profile {
         };
         self.values
             .get(key)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32
+    }
+
+    pub fn get_snapshot_prgch_offset(&self) -> i32 {
+        self.values
+            .get("midiSnapshotPrgChOffset")
             .and_then(|v| v.as_i64())
             .unwrap_or(0) as i32
     }

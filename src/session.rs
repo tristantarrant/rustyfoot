@@ -976,14 +976,20 @@ impl Session {
     ) {
         let pb_channel = self.profile.get_midi_prgch_channel("pedalboard");
         let ss_channel = self.profile.get_midi_prgch_channel("snapshot");
+        let ss_offset = self.profile.get_snapshot_prgch_offset();
 
         // Route based on channel: snapshot channel takes priority if configured
         if ss_channel > 0 && channel == ss_channel - 1 {
+            // Dedicated snapshot channel — all PCs are snapshots
             // Profile channels are 1-based (0 = disabled), mod-host channels are 0-based
             self.handle_midi_snapshot_change(program).await;
         } else if pb_channel == 0 || channel == pb_channel - 1 {
-            // pb_channel 0 = accept all channels; otherwise match 1-based to 0-based
-            self.handle_midi_pedalboard_change(program, settings, midi_cal).await;
+            // Pedalboard channel — check if PC falls in snapshot offset range
+            if ss_offset > 0 && program >= ss_offset {
+                self.handle_midi_snapshot_change(program - ss_offset).await;
+            } else {
+                self.handle_midi_pedalboard_change(program, settings, midi_cal).await;
+            }
         } else {
             tracing::debug!(
                 "[session] MIDI program change on unhandled channel {} (program {})",

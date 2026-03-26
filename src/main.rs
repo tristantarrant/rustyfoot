@@ -469,8 +469,20 @@ fn send_snapshot_list_to_hmi(session: &session::Session) {
 /// Send the profile list to the HMI.
 fn send_profile_list_to_hmi(session: &session::Session) {
     let current = session.profile.get_index();
+    let data_dir = session.profile.get_data_dir();
     let names: Vec<String> = (1..=4)
-        .map(|i| percent_encode(&format!("Profile {}", i)))
+        .map(|i| {
+            let path = data_dir.join(format!("profile{}.json", i));
+            let loaded: std::collections::HashMap<String, serde_json::Value> =
+                crate::utils::safe_json_load(&path);
+            let name = loaded
+                .get("name")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("Profile {}", i));
+            percent_encode(&name)
+        })
         .collect();
     let msg = format!(
         "{} {} {}",
@@ -727,6 +739,12 @@ async fn hmi_command_loop(
                         let channel = value as i32;
                         tracing::info!("[hmi-cmd] setting snapshot MIDI channel to {}", channel);
                         session.profile.set_value("midiSnapshotPrgChChannel", serde_json::Value::from(channel));
+                        continue;
+                    }
+                    mod_protocol::MENU_ID_SNAPSHOT_PRGCH_OFFSET => {
+                        let offset = value as i32;
+                        tracing::info!("[hmi-cmd] setting snapshot PC offset to {}", offset);
+                        session.profile.set_value("midiSnapshotPrgChOffset", serde_json::Value::from(offset));
                         continue;
                     }
                     _ => {
