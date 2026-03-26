@@ -226,8 +226,8 @@ impl Session {
 
         let host = Host::new(settings);
         let mut profile = crate::profile::Profile::new(settings);
-        // Load profile 1 by default (or whichever was last active)
-        profile.retrieve(1);
+        let last_index = crate::profile::Profile::last_active_index(settings);
+        profile.retrieve(last_index);
         let recorder = Recorder::new(settings);
         let player = Player::new(settings);
         let screenshot_generator = ScreenshotGenerator::new(settings);

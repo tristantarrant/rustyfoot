@@ -69,6 +69,18 @@ impl Profile {
         }
     }
 
+    /// Read the last active profile index from the intermediate file.
+    /// Returns 1 if no intermediate file exists.
+    pub fn last_active_index(settings: &Settings) -> i32 {
+        let path = index_to_filepath(&settings.data_dir, 5);
+        let data: HashMap<String, Value> = crate::utils::safe_json_load(&path);
+        data.get("index")
+            .and_then(|v| v.as_i64())
+            .map(|i| i as i32)
+            .filter(|&i| (1..=4).contains(&i))
+            .unwrap_or(1)
+    }
+
     pub fn get_index(&self) -> i32 {
         self.index
     }
