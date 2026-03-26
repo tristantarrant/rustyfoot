@@ -1,0 +1,101 @@
+#!/bin/bash
+#
+# Removes LV2 plugin bundles not used by any installed pedalboard.
+#
+# Usage:
+#   lv2-remove-unused [--dry-run] [pedalboards_dir] [plugins_dir]
+#
+# Defaults:
+#   pedalboards_dir = $MOD_USER_PEDALBOARDS_DIR or /var/lib/rustyfoot/pedalboards
+#   plugins_dir     = $MOD_USER_PLUGINS_DIR or /var/lib/rustyfoot/plugins
+#
+# Options:
+#   --dry-run   Show what would be removed without deleting anything
+#
+# Note: system bundles in /usr/lib/lv2 are never touched.
+
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+DRY_RUN=false
+POSITIONAL=()
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run)  DRY_RUN=true ;;
+    -h|--help)
+      sed -n '2,/^$/s/^# \?//p' "$0"
+      exit 0
+      ;;
+    *)          POSITIONAL+=("$arg") ;;
+  esac
+done
+
+PEDALBOARDS_DIR="${POSITIONAL[0]:-${MOD_USER_PEDALBOARDS_DIR:-/var/lib/rustyfoot/pedalboards}}"
+PLUGINS_DIR="${POSITIONAL[1]:-${MOD_USER_PLUGINS_DIR:-/var/lib/rustyfoot/plugins}}"
+
+if [ ! -d "$PEDALBOARDS_DIR" ]; then
+  echo "Error: pedalboards directory not found: $PEDALBOARDS_DIR" >&2
+  exit 1
+fi
+
+if [ ! -d "$PLUGINS_DIR" ]; then
+  echo "Error: plugins directory not found: $PLUGINS_DIR" >&2
+  exit 1
+fi
+
+# Get unused bundles (only in the user plugins dir, not system dirs)
+UNUSED=$("$SCRIPT_DIR/lv2-used-bundles" --unused "$PEDALBOARDS_DIR" "$PLUGINS_DIR")
+
+if [ -z "$UNUSED" ]; then
+  echo "No unused plugins found."
+  exit 0
+fi
+
+COUNT=$(echo "$UNUSED" | wc -l)
+TOTAL_SIZE=0
+
+echo "Found $COUNT unused plugin bundles in $PLUGINS_DIR:"
+echo ""
+while IFS= read -r bundle; do
+  bundle_path="$PLUGINS_DIR/$bundle"
+  if [ -d "$bundle_path" ]; then
+    size=$(du -sh "$bundle_path" | cut -f1)
+    TOTAL_SIZE=$(( TOTAL_SIZE + $(du -s "$bundle_path" | cut -f1) ))
+    echo "  $bundle ($size)"
+  fi
+done <<< "$UNUSED"
+
+TOTAL_HUMAN=$(echo "$TOTAL_SIZE" | awk '{
+  if ($1 >= 1048576) printf "%.1f GB\n", $1/1048576
+  else if ($1 >= 1024) printf "%.1f MB\n", $1/1024
+  else printf "%d KB\n", $1
+}')
+echo ""
+echo "Total space to reclaim: $TOTAL_HUMAN"
+
+if [ "$DRY_RUN" = true ]; then
+  echo ""
+  echo "(dry run — nothing was removed)"
+  exit 0
+fi
+
+echo ""
+read -r -p "Remove these $COUNT bundles? [y/N] " answer
+case "$answer" in
+  [yY]*)
+    while IFS= read -r bundle; do
+      bundle_path="$PLUGINS_DIR/$bundle"
+      if [ -d "$bundle_path" ]; then
+        rm -rf "$bundle_path"
+        echo "Removed: $bundle"
+      fi
+    done <<< "$UNUSED"
+    echo ""
+    echo "Done. Removed $COUNT unused plugin bundles."
+    echo "Restart rustyfoot to apply: sudo systemctl restart rustyfoot"
+    ;;
+  *)
+    echo "Aborted."
+    ;;
+esac
