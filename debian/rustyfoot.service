@@ -1,5 +1,5 @@
 [Unit]
-Description=Rustyfoot - MOD Audio Web UI
+Description=Rustyfoot - LV2 Pedalboard Web UI
 After=jackd-modhost.service
 Wants=jackd-modhost.service
 

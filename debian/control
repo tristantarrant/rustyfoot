@@ -18,7 +18,7 @@ Depends: ${shlibs:Depends},
          libjack-jackd2-0 | libjack0,
          rustyfoot-modhost
 Recommends: jack-capture
-Description: Web-based pedalboard manager for MOD Audio devices
+Description: Web-based LV2 pedalboard manager
  Rust reimplementation of the mod-ui web server for managing
  LV2 audio plugin pedalboards. Provides a browser-based interface
  for building, saving, and loading pedalboard configurations with
