@@ -19,6 +19,7 @@ Environment=XDG_CACHE_HOME=/var/cache/rustyfoot
 Environment=LV2_PATH=/var/lib/rustyfoot/plugins:/usr/lib/lv2:/usr/local/lib/lv2
 Environment=LD_LIBRARY_PATH=/usr/lib/rustyfoot
 Environment=RUST_LOG=info,actix_web=warn
+LogFilterPatterns=~added tuple during iteration
 User=modhost
 ExecStart=/usr/bin/rustyfoot
 Restart=on-failure
