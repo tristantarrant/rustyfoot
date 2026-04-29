@@ -498,17 +498,67 @@ impl Session {
                     self.host.ipc.send_modified(&msg, None, "boolean").await;
                 }
             }
-        } else if actuator_uri == "null" || actuator_uri.is_empty() {
-            // Unaddress
-            if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
-                if portsymbol == ":bypass" {
-                    plugin_data.bypass_cc = (-1, -1);
-                } else {
-                    plugin_data.midi_ccs.remove(portsymbol);
-                }
-            }
-            let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
+        } else if actuator_uri.starts_with("/cv/") {
+            // CV addressing: actuator_uri = "/cv/graph/InstanceName/PortSymbol"
+            let cv_source_path = actuator_uri.strip_prefix("/cv").unwrap_or(actuator_uri);
+            let jack_source = self.host.fix_host_connection_port(cv_source_path);
+            let label = addressing.get("label").and_then(|v| v.as_str()).unwrap_or("");
+            let op_mode = addressing.get("operationalMode").and_then(|v| v.as_str()).unwrap_or("+");
+            let feedback = addressing.get("feedback").and_then(|v| v.as_bool()).unwrap_or(true);
+
+            // Remove any previous CV addressing on this port
+            self.host.addressings.remove(instance_id, portsymbol);
+
+            // Store the addressing
+            self.host.addressings.add(crate::addressings::AddressingData {
+                actuator_uri: actuator_uri.to_string(),
+                instance_id,
+                port: portsymbol.to_string(),
+                label: label.to_string(),
+                value: 0.0,
+                minimum,
+                maximum,
+                steps: 0,
+                unit: String::new(),
+                options: vec![],
+                tempo: false,
+                dividers: None,
+                page: None,
+                subpage: None,
+                group: None,
+                coloured: false,
+                momentary: 0,
+                operational_mode: op_mode.to_string(),
+            });
+
+            let msg = format!("cv_map {} {} {} {} {} {}",
+                instance_id, portsymbol, jack_source, minimum, maximum, op_mode);
             self.host.ipc.send_modified(&msg, None, "boolean").await;
+
+            // Broadcast to web UI
+            let ws_label = label.replace(' ', "_");
+            let feedback_int = if feedback { 1 } else { 0 };
+            let ws_msg = format!("cv_map {} {} {} {} {} {} {} {}",
+                instance, portsymbol, actuator_uri, minimum, maximum,
+                ws_label, op_mode, feedback_int);
+            self.msg_callback_broadcast(&ws_msg, None);
+        } else if actuator_uri == "null" || actuator_uri.is_empty() {
+            // Unaddress — check if previous addressing was CV
+            if let Some(_cv_uri) = self.host.addressings.find_cv_addressing(instance_id, portsymbol) {
+                self.host.addressings.remove(instance_id, portsymbol);
+                let msg = format!("cv_unmap {} {}", instance_id, portsymbol);
+                self.host.ipc.send_modified(&msg, None, "boolean").await;
+            } else {
+                if let Some(plugin_data) = self.host.plugins.get_mut(&instance_id) {
+                    if portsymbol == ":bypass" {
+                        plugin_data.bypass_cc = (-1, -1);
+                    } else {
+                        plugin_data.midi_ccs.remove(portsymbol);
+                    }
+                }
+                let msg = format!("midi_unmap {} {}", instance_id, portsymbol);
+                self.host.ipc.send_modified(&msg, None, "boolean").await;
+            }
         }
     }
 
@@ -892,6 +942,34 @@ impl Session {
                 "boolean",
             )
             .await;
+
+        // Load CV addressings from addressings.json and replay cv_map commands
+        {
+            use crate::settings::PEDALBOARD_INSTANCE_ID;
+            let instances: std::collections::HashMap<i32, String> = self.host.mapper.get_id_map()
+                .iter()
+                .filter(|&(&id, _)| id != PEDALBOARD_INSTANCE_ID)
+                .map(|(&id, name)| (id, name.clone()))
+                .collect();
+            let cv_addrs = self.host.addressings.load_cv_addressings(
+                std::path::Path::new(bundlepath),
+                &instances,
+            );
+            for (actuator_uri, instance_name, port, label, minimum, maximum, op_mode) in &cv_addrs {
+                let cv_source_path = actuator_uri.strip_prefix("/cv").unwrap_or(actuator_uri);
+                let jack_source = self.host.fix_host_connection_port(cv_source_path);
+                if let Some(instance_id) = self.host.mapper.get_id_without_creating(instance_name) {
+                    let msg = format!("cv_map {} {} {} {} {} {}",
+                        instance_id, port, jack_source, minimum, maximum, op_mode);
+                    self.host.ipc.send_notmodified(&msg, None, "boolean").await;
+
+                    let ws_label = label.replace(' ', "_");
+                    let ws_msg = format!("cv_map {} {} {} {} {} {} {} 1",
+                        instance_name, port, actuator_uri, minimum, maximum, ws_label, op_mode);
+                    self.msg_callback(&ws_msg);
+                }
+            }
+        }
 
         // Enable processing
         self.host

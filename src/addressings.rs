@@ -226,6 +226,18 @@ impl Addressings {
         }
     }
 
+    /// Check if a port has a CV addressing and return the actuator URI if so.
+    pub fn find_cv_addressing(&self, instance_id: i32, port: &str) -> Option<String> {
+        for (uri, addrs) in &self.cv_addressings {
+            for a in addrs {
+                if a.instance_id == instance_id && a.port == port {
+                    return Some(uri.clone());
+                }
+            }
+        }
+        None
+    }
+
     /// Remove all addressings for a given instance_id.
     pub fn remove_instance(&mut self, instance_id: i32) {
         for slot in self.hmi_addressings.values_mut() {
@@ -344,11 +356,151 @@ impl Addressings {
             }
         }
 
+        // Save CV addressings
+        for (uri, addrs) in &self.cv_addressings {
+            let items: Vec<Value> = addrs
+                .iter()
+                .filter_map(|a| {
+                    let instance = instances.get(&a.instance_id)?;
+                    Some(serde_json::json!({
+                        "instance": instance,
+                        "port": a.port,
+                        "label": a.label,
+                        "minimum": a.minimum,
+                        "maximum": a.maximum,
+                        "operationalMode": a.operational_mode,
+                    }))
+                })
+                .collect();
+            if !items.is_empty() {
+                data.insert(uri.clone(), Value::Array(items));
+            }
+        }
+
+        // Save CV port names
+        if !self.cv_port_names.is_empty() {
+            let names: serde_json::Map<String, Value> = self.cv_port_names.iter()
+                .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+                .collect();
+            data.insert("__cv_port_names__".to_string(), Value::Object(names));
+        }
+
         let path = bundlepath.join("addressings.json");
         let json = serde_json::to_string_pretty(&data).unwrap_or_default();
         if let Err(e) = utils::text_file_flusher(&path, &json) {
             tracing::error!("[addressings] failed to save: {}", e);
         }
+    }
+
+    /// Load CV addressings from a pedalboard bundle's addressings.json.
+    /// Returns a vec of (actuator_uri, instance_name, port, label, min, max, op_mode)
+    /// for the caller to send cv_map commands.
+    pub fn load_cv_addressings(
+        &mut self,
+        bundlepath: &Path,
+        instances: &HashMap<i32, String>,
+    ) -> Vec<(String, String, String, String, f64, f64, String)> {
+        let path = bundlepath.join("addressings.json");
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+        let data: HashMap<String, Value> = match serde_json::from_str(&content) {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::warn!("[addressings] failed to parse {}: {}", path.display(), e);
+                return Vec::new();
+            }
+        };
+
+        // Reverse map: instance_name → instance_id
+        let name_to_id: HashMap<&str, i32> = instances.iter()
+            .map(|(&id, name)| (name.as_str(), id))
+            .collect();
+
+        // Restore CV port names
+        if let Some(Value::Object(names)) = data.get("__cv_port_names__") {
+            for (uri, name_val) in names {
+                if let Some(name) = name_val.as_str() {
+                    self.cv_port_names.insert(uri.clone(), name.to_string());
+                    if !self.cv_addressings.contains_key(uri) {
+                        self.cv_addressings.insert(uri.clone(), Vec::new());
+                    }
+                }
+            }
+        }
+
+        let mut result = Vec::new();
+
+        for (uri, entries) in &data {
+            if !uri.starts_with("/cv/") {
+                continue;
+            }
+
+            // Register this CV port if not already present
+            if !self.cv_addressings.contains_key(uri) {
+                self.cv_addressings.insert(uri.clone(), Vec::new());
+            }
+
+            let arr = match entries.as_array() {
+                Some(a) => a,
+                None => continue,
+            };
+
+            for entry in arr {
+                let instance_name = entry.get("instance").and_then(|v| v.as_str()).unwrap_or("");
+                let port = entry.get("port").and_then(|v| v.as_str()).unwrap_or("");
+                let label = entry.get("label").and_then(|v| v.as_str()).unwrap_or("");
+                let minimum = entry.get("minimum").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let maximum = entry.get("maximum").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                let op_mode = entry.get("operationalMode").and_then(|v| v.as_str()).unwrap_or("+");
+
+                if instance_name.is_empty() || port.is_empty() {
+                    continue;
+                }
+
+                let instance_id = match name_to_id.get(instance_name) {
+                    Some(&id) => id,
+                    None => {
+                        tracing::warn!("[addressings] unknown instance '{}' in CV addressing", instance_name);
+                        continue;
+                    }
+                };
+
+                self.add(AddressingData {
+                    actuator_uri: uri.clone(),
+                    instance_id,
+                    port: port.to_string(),
+                    label: label.to_string(),
+                    value: 0.0,
+                    minimum,
+                    maximum,
+                    steps: 0,
+                    unit: String::new(),
+                    options: vec![],
+                    tempo: false,
+                    dividers: None,
+                    page: None,
+                    subpage: None,
+                    group: None,
+                    coloured: false,
+                    momentary: 0,
+                    operational_mode: op_mode.to_string(),
+                });
+
+                result.push((
+                    uri.clone(),
+                    instance_name.to_string(),
+                    port.to_string(),
+                    label.to_string(),
+                    minimum,
+                    maximum,
+                    op_mode.to_string(),
+                ));
+            }
+        }
+
+        result
     }
 
     /// Create a MIDI CC actuator URI.
