@@ -729,6 +729,13 @@ impl Session {
         self.host
             .save_state_to_ttl(&bundlepath, title, titlesym);
 
+        // Save addressings (CV, MIDI, HMI, BPM)
+        let instances: std::collections::HashMap<i32, String> = self.host.mapper.get_id_map()
+            .iter()
+            .map(|(&id, name)| (id, name.clone()))
+            .collect();
+        self.host.addressings.save(std::path::Path::new(&bundlepath), &instances);
+
         // Save last state
         save_last_bank_and_pedalboard(settings, self.host.bank_id, self.host.userbanks_offset, &bundlepath);
 
@@ -955,6 +962,14 @@ impl Session {
                 std::path::Path::new(bundlepath),
                 &instances,
             );
+
+            // Tell browser about CV output ports before sending cv_map
+            for (uri, name) in &self.host.addressings.cv_port_names {
+                let ws_name = name.replace(' ', "_");
+                let op_mode = self.host.get_cv_port_op_mode(uri);
+                self.msg_callback(&format!("add_cv_port {} {} {}", uri, ws_name, op_mode));
+            }
+
             for (actuator_uri, instance_name, port, label, minimum, maximum, op_mode) in &cv_addrs {
                 let cv_source_path = actuator_uri.strip_prefix("/cv").unwrap_or(actuator_uri);
                 let jack_source = self.host.fix_host_connection_port(cv_source_path);

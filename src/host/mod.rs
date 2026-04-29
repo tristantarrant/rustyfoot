@@ -922,7 +922,7 @@ impl Host {
     }
 
     /// Determine the operational mode of a CV port based on its min/max ranges.
-    fn get_cv_port_op_mode(&self, actuator_uri: &str) -> String {
+    pub fn get_cv_port_op_mode(&self, actuator_uri: &str) -> String {
         // URI format: /cv/graph/Instance/PortSymbol
         let cv_path = actuator_uri
             .strip_prefix("/cv")
