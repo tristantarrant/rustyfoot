@@ -986,6 +986,24 @@ impl Session {
             }
         }
 
+        // Pre-run all plugins to initialize internal DSP state before enabling audio
+        {
+            use crate::settings::PEDALBOARD_INSTANCE_ID;
+            for &instance_id in self.host.plugins.keys() {
+                if instance_id == PEDALBOARD_INSTANCE_ID {
+                    continue;
+                }
+                self.host
+                    .ipc
+                    .send_notmodified(
+                        &format!("pre_run {} 0 0", instance_id),
+                        None,
+                        "int",
+                    )
+                    .await;
+            }
+        }
+
         // Enable processing
         self.host
             .ipc
