@@ -1575,17 +1575,11 @@ Desktop.prototype.makePedalboard = function (el, effectBox) {
         },
 
         pedalboardFinishedLoading: function (callback) {
-            if (! self.loadingPeldaboardForFirstTime) {
-                callback()
-                return
+            if (self.loadingPeldaboardForFirstTime) {
+                self.loadingPeldaboardForFirstTime = false
+                self.effectBox.effectBox('search')
             }
-
-            self.loadingPeldaboardForFirstTime = false
-            self.effectBox.effectBox('search', function () {
-                setTimeout(function () {
-                    callback()
-                }, 500)
-            })
+            callback()
         },
 
         addCVAddressingPluginPort: function (uri, name, callback) {
