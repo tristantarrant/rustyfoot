@@ -306,45 +306,48 @@ JqueryClass('effectBox', {
         var currentRenderId = self.data('showPluginsRenderId')+1
         self.data('showPluginsRenderId', currentRenderId)
 
-        // render plugins
+        // render plugins in batches to allow the browser to discover
+        // thumbnail images sooner and fetch them in parallel
         var plugin
-        function renderNextPlugin() {
+        var BATCH_SIZE = 20
+        function renderBatch() {
             if (self.data('showPluginsRenderId') != currentRenderId) {
-                // another render is in place, stop this one
                 if (callback) { callback() }
                 return
             }
 
+            var batchEnd = Math.min(renderedIndex + BATCH_SIZE, pluginCount)
+            while (renderedIndex < batchEnd) {
+                plugin   = plugins[renderedIndex]
+                category = plugin.category[0]
+
+                self.effectBox('renderPlugin', plugin, self.find('#effect-content-All'))
+
+                if (FAVORITES.indexOf(plugin.uri) >= 0) {
+                    self.effectBox('renderPlugin', plugin, self.find('#effect-content-Favorites'))
+                }
+
+                if (category && category != 'All') {
+                    self.effectBox('renderPlugin', plugin, self.find('#effect-content-' + category))
+                }
+
+                renderedIndex += 1
+            }
+
             if (renderedIndex >= pluginCount) {
-                // if we get here it means we finished rendering
                 self.effectBox('calculateNavigation')
 
                 if (self.data('showPluginsRenderId') == currentRenderId) {
-                    // no other renders in queue, take the chance and reset the id
                     self.data('showPluginsRenderId', 0)
                 }
                 if (callback) { callback() }
                 return
             }
 
-            plugin   = plugins[renderedIndex]
-            category = plugin.category[0]
-
-            self.effectBox('renderPlugin', plugin, self.find('#effect-content-All'))
-
-            if (FAVORITES.indexOf(plugin.uri) >= 0) {
-                self.effectBox('renderPlugin', plugin, self.find('#effect-content-Favorites'))
-            }
-
-            if (category && category != 'All') {
-                self.effectBox('renderPlugin', plugin, self.find('#effect-content-' + category))
-            }
-
-            renderedIndex += 1
-            setTimeout(renderNextPlugin, 1);
+            setTimeout(renderBatch, 1);
         }
 
-        renderNextPlugin(0)
+        renderBatch()
     },
 
     renderPlugin: function (plugin, container, replace) {
