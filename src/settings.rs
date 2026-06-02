@@ -184,11 +184,11 @@ impl Settings {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
-        let tuner = env_str("MOD_TUNER_PLUGIN", "gxtuner");
-        let (tuner_uri, tuner_input_port, tuner_monitor_port) = if tuner == "tuna" {
-            ("urn:mod:tuna".into(), "in".into(), "freq_out".into())
-        } else {
+        let tuner = env_str("MOD_TUNER_PLUGIN", "tuna");
+        let (tuner_uri, tuner_input_port, tuner_monitor_port) = if tuner == "gxtuner" {
             ("http://guitarix.sourceforge.net/plugins/gxtuner#tuner".into(), "in".into(), "FREQ".into())
+        } else {
+            ("http://gareus.org/oss/lv2/tuna#".into(), "in".into(), "freq_out".into())
         };
 
         let update_os_filename = env_str("MOD_UPDATE_MOD_OS_FILE", "modduo.tar")
