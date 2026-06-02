@@ -9,6 +9,8 @@ function Desktop(elements) {
         titleBox: $('<div>'),
         zoomIn: $('<div>'),
         zoomOut: $('<div>'),
+        gridToggle: $('<div>'),
+        gridSnapAll: $('<div>'),
         addMidiButton: $('<div>'),
         midiPortsWindow: $('<div>'),
         midiPortsList: $('<div>'),
@@ -226,6 +228,32 @@ function Desktop(elements) {
     })
     elements.zoomOut.click(function () {
         self.pedalboard.pedalboard('zoomOut')
+    })
+
+    var gridSize = 0
+    var GRID_DEFAULT = 70
+    elements.gridToggle.click(function () {
+        var el = $(this)
+        if (gridSize > 0) {
+            gridSize = 0
+            el.removeClass('active')
+            self.pedalboard.removeClass('grid-enabled')
+        } else {
+            gridSize = GRID_DEFAULT
+            el.addClass('active')
+            self.pedalboard.addClass('grid-enabled')
+            self.pedalboard[0].style.setProperty('--grid-size', gridSize + 'px')
+        }
+        self.pedalboard.data('gridSize', gridSize)
+    })
+    elements.gridSnapAll.click(function () {
+        if (gridSize <= 0) {
+            gridSize = GRID_DEFAULT
+            elements.gridToggle.addClass('active')
+            self.pedalboard.addClass('grid-enabled')
+            self.pedalboard.data('gridSize', gridSize)
+        }
+        self.pedalboard.pedalboard('snapAllToGrid')
     })
 
     var ajaxFactory = function (url, errorMessage) {

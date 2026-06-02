@@ -108,6 +108,8 @@ $('document').ready(function() {
         pedalboard: $('#pedalboard-dashboard'),
         zoomIn: $('.zoom-in'),
         zoomOut: $('.zoom-out'),
+        gridToggle: $('.grid-toggle'),
+        gridSnapAll: $('.grid-snap-all'),
         addMidiButton: $('#mod-show-midi-port'),
         midiPortsWindow: $('#midi-ports-window'),
         midiPortsList: $("#midi-ports-list"),
@@ -604,12 +606,14 @@ $('document').ready(function() {
             </div>
             <!-- END PEDALBOARD-SETTINGS -->
 
-            <!-- ZOOM CONTROLLERS -->
+            <!-- ZOOM & GRID CONTROLLERS -->
             <div id="zoom-controllers">
+                <span class="grid-toggle icon-th" title="Toggle grid snap"></span>
+                <span class="grid-snap-all icon-th-large" title="Snap all to grid"></span>
                 <span class="zoom-out"></span>
                 <span class="zoom-in"></span>
             </div>
-            <!-- END ZOOM CONTROLLERS -->
+            <!-- END ZOOM & GRID CONTROLLERS -->
 
         </header>
         <!-- END PEDALBOARD-ACTIONS -->

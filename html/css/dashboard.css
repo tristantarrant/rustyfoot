@@ -53,6 +53,38 @@ body.bg-rust #pedalboards-library .pedalboard {
     font-size: 50px;
 }
 
+#zoom-controllers > span.grid-toggle,
+#zoom-controllers > span.grid-snap-all {
+    background-image: none;
+    line-height: 45px;
+    text-align: center;
+    font-size: 18px;
+    color: #999;
+}
+#zoom-controllers > span.grid-toggle:hover,
+#zoom-controllers > span.grid-snap-all:hover {
+    color: #fff;
+}
+#zoom-controllers > span.grid-toggle.active {
+    color: #4fc;
+    opacity: 1;
+}
+
+#pedalboard-dashboard.grid-enabled::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: var(--grid-size, 70px) var(--grid-size, 70px);
+    pointer-events: none;
+    z-index: 0;
+}
+
 #zoom-controllers {
     position:absolute;
     right:0px;
@@ -80,10 +112,10 @@ body.bg-rust #pedalboards-library .pedalboard {
     background-color:#000;
     opacity: 1;
 }
-#zoom-controllers > span:first-child {
+#zoom-controllers > span.zoom-out {
     background-image:url(../img/icn-zoom-out.png);
 }
-#zoom-controllers > span:last-child {
+#zoom-controllers > span.zoom-in {
     background-image:url(../img/icn-zoom-in.png);
 }
 
@@ -93,7 +125,7 @@ body.bg-rust #pedalboards-library .pedalboard {
     height:100%;
     position: absolute;
     left:45px;
-    right: 90px;
+    right: 180px;
     margin:0;
     padding:0;
     display: inline-block;

@@ -226,6 +226,7 @@ JqueryClass('pedalboard', {
 
         self.data('instanceCounter', -1)
         self.data('overCount', 0)
+        self.data('gridSize', 0)
 
         // Holds all plugins loaded, indexed by instance
         self.data('plugins', {})
@@ -1371,6 +1372,11 @@ JqueryClass('pedalboard', {
                 var scale = self.data('scale')
                 ui.position.left /= scale
                 ui.position.top /= scale
+                var gridSize = self.data('gridSize') || 0
+                if (gridSize > 0) {
+                    ui.position.left = Math.round(ui.position.left / gridSize) * gridSize
+                    ui.position.top = Math.round(ui.position.top / gridSize) * gridSize
+                }
                 self.trigger('modified')
                 self.pedalboard('drawPluginJacks', obj.icon)
             },
@@ -1953,6 +1959,25 @@ JqueryClass('pedalboard', {
             self.pedalboard('drawJack', jack)
             $(jack.data('svg')._container).css({ 'z-index': self.data("z_index")-1, 'pointer-events': 'none'})
         })
+    },
+
+    snapAllToGrid: function () {
+        var self = $(this)
+        var gridSize = self.data('gridSize') || 0
+        if (gridSize <= 0) return
+        var pluginMove = self.data('pluginMove')
+        self.children('.mod-pedal').each(function () {
+            var el = $(this)
+            var instance = el.attr('mod-instance')
+            if (!instance) return
+            var left = Math.round(parseInt(el.css('left')) / gridSize) * gridSize
+            var top = Math.round(parseInt(el.css('top')) / gridSize) * gridSize
+            el.css({ left: left, top: top })
+            pluginMove(instance, left, top)
+            self.pedalboard('drawPluginJacks', el)
+        })
+        self.trigger('modified')
+        self.pedalboard('adapt', false)
     },
 
     // Removes a plugin from pedalboard. (from the system?)
