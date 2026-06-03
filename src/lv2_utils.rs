@@ -458,12 +458,15 @@ unsafe fn gui_ports_to_json(ptr: *const PluginGUIPort) -> Vec<Value> { unsafe {
         if !gp.valid {
             break;
         }
-        result.push(json!({
-            "valid": gp.valid,
-            "index": gp.index,
-            "name": c_str_to_string(gp.name),
-            "symbol": c_str_to_string(gp.symbol),
-        }));
+        let symbol = c_str_to_string(gp.symbol);
+        if !symbol.is_empty() {
+            result.push(json!({
+                "valid": gp.valid,
+                "index": gp.index,
+                "name": c_str_to_string(gp.name),
+                "symbol": symbol,
+            }));
+        }
         i += 1;
     }
     result
