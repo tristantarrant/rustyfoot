@@ -2502,20 +2502,7 @@ const PluginInfo& _get_plugin_info(LilvWorld* const w,
 
         if (LilvNodes* const modgui_ports = lilv_world_find_nodes(w, modguigui, ns.modgui_port, nullptr))
         {
-            int maxindex = -1;
-            LILV_FOREACH(nodes, it, modgui_ports)
-            {
-                const LilvNode* const modgui_port = lilv_nodes_get(modgui_ports, it);
-                if (LilvNode* const guiports_index = lilv_world_get(w, modgui_port, ns.lv2core_index, nullptr))
-                {
-                    const int idx = lilv_node_as_int(guiports_index);
-                    if (idx > maxindex)
-                        maxindex = idx;
-                    lilv_node_free(guiports_index);
-                }
-            }
-
-            const unsigned int guiportscount = (unsigned int)(maxindex + 1);
+            const unsigned int guiportscount = lilv_nodes_size(modgui_ports);
 
             PluginGUIPort* const guiports = new PluginGUIPort[guiportscount+1];
             memset(guiports, 0, sizeof(PluginGUIPort) * (guiportscount+1));
