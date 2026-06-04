@@ -1,13 +1,14 @@
 #!/usr/bin/make -f
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 %:
 	dh $@
 
 override_dh_auto_build:
 	$(MAKE) -C utils
-	cargo build --release
+	LD_LIBRARY_PATH=./lib cargo build --release
 
 override_dh_auto_install:
 	install -D -m 755 target/release/rustyfoot debian/rustyfoot/usr/bin/rustyfoot
