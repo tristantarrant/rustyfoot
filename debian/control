@@ -3,8 +3,6 @@ Section: sound
 Priority: optional
 Maintainer: Dataforte <info@dataforte.net>
 Build-Depends: debhelper (>= 13),
-               cargo,
-               rustc,
                liblilv-dev,
                libjack-jackd2-dev
 Standards-Version: 4.6.2
