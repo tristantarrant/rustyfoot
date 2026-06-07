@@ -5,6 +5,7 @@ var tone3000 = {
     totalPages: 1,
     total: 0,
     category: '',
+    architecture: '',
     searchText: '',
     searchTimeout: null,
 
@@ -37,6 +38,13 @@ var tone3000 = {
             $(this).addClass('selected');
             var cat = $(this).attr('id').replace('tone3000-tab-', '');
             self.category = (cat === 'All') ? '' : cat;
+            self.page = 1;
+            self.search();
+        });
+
+        // Architecture dropdown
+        $('#tone3000-architecture').change(function () {
+            self.architecture = $(this).val();
             self.page = 1;
             self.search();
         });
@@ -93,6 +101,7 @@ var tone3000 = {
         var self = this;
         var data = { q: self.searchText, page: self.page, per_page: 24 };
         if (self.category) data.category = self.category;
+        if (self.architecture) data.architecture = self.architecture;
 
         $.ajax({
             method: 'GET',
@@ -148,12 +157,21 @@ var tone3000 = {
         var isIR = (item.categories || []).some(function(c) { return c.indexOf('Impulse') >= 0; });
         var defaultThumb = isIR ? '/resources/pedals/ir-thumbnail.png' : '/resources/pedals/nam-thumbnail.png';
 
+        var archTags = (item.tags || []).filter(function(t) { return t === 'A1' || t === 'A2'; });
+        var archBadges = '';
+        if (archTags.length > 0) {
+            archBadges = archTags.map(function(t) {
+                var color = t === 'A2' ? '#4a9' : '#888';
+                return '<span style="display:inline-block;padding:1px 5px;margin-left:4px;border-radius:3px;font-size:10px;background:' + color + ';color:#fff;">' + t + '</span>';
+            }).join('');
+        }
+
         var card = $(
             '<div class="cloud-plugin plugin-container available-plugin">' +
                 '<div class="cloud-plugin-border">' +
                     '<figure class="thumb"><img src="' + (item.thumbnail_url || defaultThumb) + '"></figure>' +
                     '<div class="description">' +
-                        '<span class="title">' + (item.title || 'Untitled') + '</span>' +
+                        '<span class="title">' + (item.title || 'Untitled') + archBadges + '</span>' +
                         '<span class="author">' + (item.author || '') + '</span>' +
                         '<hr class="dotted" />' +
                         '<p>' + desc + '<span class="limiter"></span></p>' +

@@ -200,8 +200,13 @@ impl Tone3000Backend {
 
         if let Some(ref cat) = query.category {
             if !cat.is_empty() {
-                // Category is the gear type slug (amp, pedal, ir, etc.)
                 request = request.query(&[("gear", cat.as_str())]);
+            }
+        }
+
+        if let Some(ref arch) = query.architecture {
+            if !arch.is_empty() {
+                request = request.query(&[("architecture", arch.as_str())]);
             }
         }
 
@@ -367,6 +372,10 @@ struct Tone {
     #[serde(default)]
     models_count: u64,
     #[serde(default)]
+    a1_models_count: u64,
+    #[serde(default)]
+    a2_models_count: u64,
+    #[serde(default)]
     user: Option<ToneUser>,
     #[serde(default)]
     makes: Vec<ToneMake>,
@@ -427,6 +436,13 @@ impl Tone {
         let makes: Vec<String> = self.makes.iter().map(|m| m.name.clone()).collect();
         let mut tags: Vec<String> = self.tags.iter().map(|t| t.name.clone()).collect();
         tags.extend(makes);
+
+        if self.a1_models_count > 0 {
+            tags.push("A1".to_string());
+        }
+        if self.a2_models_count > 0 {
+            tags.push("A2".to_string());
+        }
 
         StoreItem {
             id: self.id,

@@ -22,6 +22,7 @@ pub struct StoreQuery {
     pub category: Option<String>,
     pub page: Option<u32>,
     pub per_page: Option<u32>,
+    pub architecture: Option<String>,
 }
 
 /// A search result page.
