@@ -232,16 +232,24 @@ impl Tone3000Backend {
         })
     }
 
-    pub async fn get(&self, id: u64) -> Result<StoreItem, String> {
+    pub async fn get(&self, id: u64, architecture: Option<&str>) -> Result<StoreItem, String> {
         let token = self.get_access_token().await?;
 
         // Fetch the models for this tone directly (no "get by ID" endpoint)
-        let models_resp = self.client.get(&format!("{}/models", BASE_URL))
+        let mut request = self.client.get(&format!("{}/models", BASE_URL))
             .bearer_auth(&token)
             .query(&[
                 ("tone_id", &id.to_string()),
                 ("page_size", &"100".to_string()),
-            ])
+            ]);
+
+        if let Some(arch) = architecture {
+            if !arch.is_empty() {
+                request = request.query(&[("architecture", arch)]);
+            }
+        }
+
+        let models_resp = request
             .send()
             .await
             .map_err(|e| format!("tone3000 models request failed: {}", e))?;

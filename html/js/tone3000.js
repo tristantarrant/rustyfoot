@@ -187,11 +187,61 @@ var tone3000 = {
         return card;
     },
 
+    installTone: function (item, architecture, btn, statusEl) {
+        btn.prop('disabled', true).text('Installing...');
+        statusEl.show().html('<p style="color:#aaf;">Downloading models...</p>');
+
+        var payload = {
+            title: item.title || '',
+            categories: item.categories || [],
+        };
+        if (architecture) payload.architecture = architecture;
+
+        $.ajax({
+            method: 'POST',
+            url: '/store/tone3000/install/' + item.id,
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function (resp) {
+                if (resp.ok) {
+                    var files = (resp.installed || []).join(', ');
+                    statusEl.html(
+                        '<p style="color:#6f6;">Installed: ' + files + '</p>' +
+                        '<p style="color:#999;">Saved to: ' + (resp.directory || '') + '</p>'
+                    );
+                    btn.text('Installed').css('opacity', 0.5);
+                } else {
+                    statusEl.html('<p style="color:#f66;">' + (resp.error || 'Install failed') + '</p>');
+                    btn.prop('disabled', false).text('Retry');
+                }
+            },
+            error: function () {
+                statusEl.html('<p style="color:#f66;">Install request failed</p>');
+                btn.prop('disabled', false).text('Retry');
+            },
+            dataType: 'json'
+        });
+    },
+
     showDetail: function (item) {
         var self = this;
         var cats = (item.categories || []).join(' / ');
-        var tags = (item.tags || []).join(', ');
+        var itemTags = (item.tags || []).filter(function(t) { return t !== 'A1' && t !== 'A2'; });
+        var tags = itemTags.join(', ');
         var downloads = item.download_count || 0;
+        var archTags = (item.tags || []).filter(function(t) { return t === 'A1' || t === 'A2'; });
+        var hasA1 = archTags.indexOf('A1') >= 0;
+        var hasA2 = archTags.indexOf('A2') >= 0;
+        var hasBoth = hasA1 && hasA2;
+
+        var installButtons = '';
+        if (hasBoth) {
+            installButtons =
+                '<button class="btn js-tone3000-install" data-arch="1" style="margin-right:10px;">Install A1</button>' +
+                '<button class="btn js-tone3000-install" data-arch="2" style="margin-right:10px;">Install A2</button>';
+        } else {
+            installButtons = '<button class="btn js-tone3000-install" style="margin-right:10px;">Install</button>';
+        }
 
         var overlay = $(
             '<div id="tone3000-detail-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;overflow-y:auto;">' +
@@ -201,7 +251,7 @@ var tone3000 = {
                     '<p style="color:#888;font-size:12px;">' + cats + (tags ? ' &middot; ' + tags : '') + ' &middot; ' + downloads + ' downloads</p>' +
                     '<p style="margin:15px 0;white-space:pre-line;">' + (item.description || 'No description available.') + '</p>' +
                     '<div id="tone3000-detail-actions" style="margin-top:20px;">' +
-                        '<button class="btn js-tone3000-install" style="margin-right:10px;">Install</button>' +
+                        installButtons +
                         (item.url ? '<a href="' + item.url + '" target="_blank" class="btn" style="margin-right:10px;text-decoration:none;">View on Tone3000</a>' : '') +
                         '<button class="btn js-tone3000-close">Close</button>' +
                     '</div>' +
@@ -216,36 +266,8 @@ var tone3000 = {
 
         overlay.find('.js-tone3000-install').click(function () {
             var btn = $(this);
-            btn.prop('disabled', true).text('Installing...');
-            overlay.find('#tone3000-detail-status').show().html('<p style="color:#aaf;">Downloading models...</p>');
-
-            $.ajax({
-                method: 'POST',
-                url: '/store/tone3000/install/' + item.id,
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    title: item.title || '',
-                    categories: item.categories || [],
-                }),
-                success: function (resp) {
-                    if (resp.ok) {
-                        var files = (resp.installed || []).join(', ');
-                        overlay.find('#tone3000-detail-status').html(
-                            '<p style="color:#6f6;">Installed: ' + files + '</p>' +
-                            '<p style="color:#999;">Saved to: ' + (resp.directory || '') + '</p>'
-                        );
-                        btn.text('Installed').css('opacity', 0.5);
-                    } else {
-                        overlay.find('#tone3000-detail-status').html('<p style="color:#f66;">' + (resp.error || 'Install failed') + '</p>');
-                        btn.prop('disabled', false).text('Retry');
-                    }
-                },
-                error: function () {
-                    overlay.find('#tone3000-detail-status').html('<p style="color:#f66;">Install request failed</p>');
-                    btn.prop('disabled', false).text('Retry');
-                },
-                dataType: 'json'
-            });
+            var arch = btn.data('arch') ? String(btn.data('arch')) : null;
+            self.installTone(item, arch, btn, overlay.find('#tone3000-detail-status'));
         });
 
         $('body').append(overlay);

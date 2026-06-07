@@ -59,7 +59,7 @@ pub async fn store_get(
     let (source, id) = path.into_inner();
     let result = match source.as_str() {
         "patchstorage" => state.store_patchstorage.get(id).await,
-        "tone3000" => state.store_tone3000.get(id).await,
+        "tone3000" => state.store_tone3000.get(id, None).await,
         "hydrogen" => state.store_hydrogen.get(id).await,
         "musical_artifacts" => state.store_musical_artifacts.get(id).await,
         _ => Err(format!("unknown store source: {}", source)),
@@ -107,6 +107,8 @@ pub struct Tone3000InstallMeta {
     title: String,
     #[serde(default)]
     categories: Vec<String>,
+    #[serde(default)]
+    architecture: Option<String>,
 }
 
 /// POST /store/{source}/install/{id} - download and install an item
@@ -286,7 +288,7 @@ async fn install_patchstorage(id: u64, state: &web::Data<AppState>) -> HttpRespo
 /// Download a NAM model / IR from Tone3000 and save to user files.
 async fn install_tone3000(id: u64, meta: &Tone3000InstallMeta, state: &web::Data<AppState>) -> HttpResponse {
     // Get models for this tone
-    let tone = match state.store_tone3000.get(id).await {
+    let tone = match state.store_tone3000.get(id, meta.architecture.as_deref()).await {
         Ok(t) => t,
         Err(e) => return HttpResponse::Ok()
             .insert_header(("Cache-Control", "no-store"))
