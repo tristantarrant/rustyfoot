@@ -1,6 +1,7 @@
 // Plugin/content store abstraction supporting multiple backends.
 
 pub mod hydrogen;
+pub mod jsfx;
 pub mod musical_artifacts;
 pub mod patchstorage;
 pub mod tone3000;
@@ -103,5 +104,10 @@ pub const SOURCES: &[StoreSource] = &[
         id: "musical_artifacts",
         name: "Musical Artifacts",
         description: "SF2 soundfonts, SFZ instruments, and MIDI files from musical-artifacts.com",
+    },
+    StoreSource {
+        id: "jsfx",
+        name: "JSFX Effects",
+        description: "JSFX audio effects from ReaPack repositories",
     },
 ];

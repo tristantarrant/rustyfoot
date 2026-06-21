@@ -56,6 +56,8 @@ pub struct AppState {
     pub store_hydrogen: store::hydrogen::HydrogenBackend,
     /// Musical Artifacts store backend
     pub store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend,
+    /// JSFX store backend
+    pub store_jsfx: store::jsfx::JsfxBackend,
     /// Per-CC MIDI expression pedal calibration
     pub midi_calibration: std::sync::RwLock<midi_calibration::MidiCalibration>,
 }
@@ -113,6 +115,7 @@ async fn main() -> std::io::Result<()> {
 
     let pcache = plugin_cache::PluginCache::new(&settings.cache_dir);
     let tone3000 = store::tone3000::Tone3000Backend::new(&settings.data_dir);
+    let jsfx = store::jsfx::JsfxBackend::new(&settings.data_dir, &settings.lv2_plugin_dir);
 
     let midi_cal = midi_calibration::MidiCalibration::new(&settings.data_dir);
 
@@ -126,6 +129,7 @@ async fn main() -> std::io::Result<()> {
         store_tone3000: tone3000,
         store_hydrogen: store::hydrogen::HydrogenBackend::new(),
         store_musical_artifacts: store::musical_artifacts::MusicalArtifactsBackend::new(),
+        store_jsfx: jsfx,
         midi_calibration: std::sync::RwLock::new(midi_cal),
     });
 
@@ -276,6 +280,11 @@ async fn main() -> std::io::Result<()> {
             .service(web::handlers::store::tone3000_auth_start)
             .service(web::handlers::store::tone3000_auth_callback)
             .service(web::handlers::store::tone3000_auth_disconnect)
+            .service(web::handlers::store::jsfx_repos_list)
+            .service(web::handlers::store::jsfx_repos_add)
+            .service(web::handlers::store::jsfx_repos_toggle)
+            .service(web::handlers::store::jsfx_repos_remove)
+            .service(web::handlers::store::jsfx_repos_refresh)
             // File browser
             .service(web::handlers::filebrowser::filebrowser_page)
             .service(web::handlers::filebrowser::filebrowser_list)

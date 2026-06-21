@@ -37,6 +37,7 @@ pub async fn store_search(
         "tone3000" => state.store_tone3000.search(&query).await,
         "hydrogen" => state.store_hydrogen.search(&query).await,
         "musical_artifacts" => state.store_musical_artifacts.search(&query).await,
+        "jsfx" => state.store_jsfx.search(&query).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -62,6 +63,7 @@ pub async fn store_get(
         "tone3000" => state.store_tone3000.get(id, None).await,
         "hydrogen" => state.store_hydrogen.get(id).await,
         "musical_artifacts" => state.store_musical_artifacts.get(id).await,
+        "jsfx" => state.store_jsfx.get(id).await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -87,6 +89,7 @@ pub async fn store_categories(
         "tone3000" => state.store_tone3000.categories().await,
         "hydrogen" => state.store_hydrogen.categories().await,
         "musical_artifacts" => state.store_musical_artifacts.categories().await,
+        "jsfx" => state.store_jsfx.categories().await,
         _ => Err(format!("unknown store source: {}", source)),
     };
 
@@ -128,6 +131,7 @@ pub async fn store_install(
         }
         "hydrogen" => install_hydrogen(id, &state).await,
         "musical_artifacts" => install_musical_artifact(id, &state).await,
+        "jsfx" => install_jsfx(id, &state).await,
         _ => HttpResponse::Ok()
             .insert_header(("Cache-Control", "no-store"))
             .json(json!({"ok": false, "error": format!("unknown store source: {}", source)})),
@@ -562,6 +566,254 @@ pub async fn tone3000_auth_disconnect(
     HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
         .json(json!({"ok": true}))
+}
+
+/// Download a JSFX effect, scan it, generate LV2 bundle, and register.
+async fn install_jsfx(id: u64, state: &web::Data<AppState>) -> HttpResponse {
+    let item = match state.store_jsfx.get(id).await {
+        Ok(t) => t,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    };
+
+    if item.files.is_empty() {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": "No files found for this JSFX effect"}));
+    }
+
+    let jsfx_dir = &state.store_jsfx.jsfx_dir;
+
+    // Download all files (main .jsfx + supporting .jsfx-inc files)
+    let mut main_jsfx_path = std::path::PathBuf::new();
+    for file in &item.files {
+        if file.url.is_empty() {
+            continue;
+        }
+
+        let data = match state.store_jsfx.download(&file.url).await {
+            Ok(d) => d,
+            Err(e) => return HttpResponse::Ok()
+                .insert_header(("Cache-Control", "no-store"))
+                .json(json!({"ok": false, "error": format!("Failed to download {}: {}", file.filename, e)})),
+        };
+
+        // Determine path: supporting files may have subdirectory paths
+        let dest_path = jsfx_dir.join(&file.filename);
+        if let Some(parent) = dest_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        if let Err(e) = std::fs::write(&dest_path, &data) {
+            return HttpResponse::Ok()
+                .insert_header(("Cache-Control", "no-store"))
+                .json(json!({"ok": false, "error": format!("Failed to save {}: {}", file.filename, e)}));
+        }
+
+        // The file with no target (or target matching the filename) is the main .jsfx
+        if file.target.is_none() {
+            main_jsfx_path = dest_path;
+        }
+
+        tracing::debug!("[store] saved JSFX file {} ({} bytes)", file.filename, data.len());
+    }
+
+    if !main_jsfx_path.exists() {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": "Main JSFX file not found after download"}));
+    }
+
+    // Run the scanner
+    let scan_output = match tokio::process::Command::new(crate::store::jsfx::scanner_path())
+        .arg(&main_jsfx_path)
+        .output()
+        .await
+    {
+        Ok(o) => o,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to run JSFX scanner: {}", e)})),
+    };
+
+    if !scan_output.status.success() {
+        let stderr = String::from_utf8_lossy(&scan_output.stderr);
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("JSFX scanner failed: {}", stderr)}));
+    }
+
+    let wrapper_json: crate::store::jsfx::WrapperJson = match serde_json::from_slice(&scan_output.stdout) {
+        Ok(w) => w,
+        Err(e) => return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to parse scanner output: {}", e)})),
+    };
+
+    // Create LV2 bundle
+    let bundle_name = crate::store::jsfx::bundle_name_for_uri(&wrapper_json.uri);
+    let bundle_path = state.store_jsfx.lv2_plugin_dir.join(&bundle_name);
+    let _ = std::fs::create_dir_all(&bundle_path);
+
+    // Remove existing bundle if loaded
+    let bp_str = bundle_path.to_string_lossy().to_string();
+    let mut session = state.session.write().await;
+    let mut removed: Vec<String> = Vec::new();
+
+    if bundle_path.exists() && crate::lv2_utils::is_bundle_loaded(&bp_str) {
+        session.host.ipc.send_notmodified(
+            &format!("bundle_remove \"{}\"", bp_str.replace('"', "\\\"")),
+            None,
+            "boolean",
+        ).await;
+        let rm_plugins = crate::lv2_utils::remove_bundle_from_lilv_world(&bp_str, None);
+        removed.extend(rm_plugins);
+    }
+
+    // Write wrapper.json
+    if let Err(e) = std::fs::write(
+        bundle_path.join("wrapper.json"),
+        &scan_output.stdout,
+    ) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to write wrapper.json: {}", e)}));
+    }
+
+    // Write manifest.ttl
+    let manifest = crate::store::jsfx::generate_manifest_ttl(&wrapper_json.uri);
+    if let Err(e) = std::fs::write(bundle_path.join("manifest.ttl"), &manifest) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to write manifest.ttl: {}", e)}));
+    }
+
+    // Write plugin.ttl
+    let plugin_ttl = crate::store::jsfx::generate_plugin_ttl(&wrapper_json);
+    if let Err(e) = std::fs::write(bundle_path.join("plugin.ttl"), &plugin_ttl) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to write plugin.ttl: {}", e)}));
+    }
+
+    // Symlink to jsfx-wrapper.so
+    let so_link = bundle_path.join("jsfx-wrapper.so");
+    let _ = std::fs::remove_file(&so_link);
+    if let Err(e) = std::os::unix::fs::symlink(
+        crate::store::jsfx::wrapper_so_path(),
+        &so_link,
+    ) {
+        return HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": format!("Failed to create symlink: {}", e)}));
+    }
+
+    // Register with mod-host
+    session.host.ipc.send_notmodified(
+        &format!("bundle_add \"{}\"", bp_str.replace('"', "\\\"")),
+        None,
+        "boolean",
+    ).await;
+    let installed = crate::lv2_utils::add_bundle_to_lilv_world(&bp_str);
+
+    crate::lv2_utils::reset_get_all_pedalboards_cache(crate::lv2_utils::PEDALBOARD_INFO_BOTH);
+    crate::utils::os_sync();
+    state.plugin_cache.refresh();
+
+    tracing::info!("[store] installed JSFX plugin: {:?}", installed);
+
+    HttpResponse::Ok()
+        .insert_header(("Cache-Control", "no-store"))
+        .json(json!({
+            "ok": true,
+            "removed": removed,
+            "installed": installed,
+        }))
+}
+
+// --- JSFX repo management endpoints ---
+
+#[derive(Deserialize)]
+pub struct JsfxRepoAdd {
+    name: String,
+    url: String,
+}
+
+/// GET /store/jsfx/repos
+#[get("/store/jsfx/repos")]
+pub async fn jsfx_repos_list(
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    let repos = state.store_jsfx.list_repos().await;
+    HttpResponse::Ok()
+        .insert_header(("Cache-Control", "no-store"))
+        .json(json!({"repos": repos}))
+}
+
+/// POST /store/jsfx/repos
+#[post("/store/jsfx/repos")]
+pub async fn jsfx_repos_add(
+    body: web::Json<JsfxRepoAdd>,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    match state.store_jsfx.add_repo(&body.name, &body.url).await {
+        Ok(()) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": true})),
+        Err(e) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    }
+}
+
+/// POST /store/jsfx/repos/{index}/toggle
+#[post("/store/jsfx/repos/{index}/toggle")]
+pub async fn jsfx_repos_toggle(
+    path: web::Path<usize>,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    let index = path.into_inner();
+    match state.store_jsfx.toggle_repo(index).await {
+        Ok(()) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": true})),
+        Err(e) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    }
+}
+
+/// DELETE /store/jsfx/repos/{index}
+#[post("/store/jsfx/repos/{index}/remove")]
+pub async fn jsfx_repos_remove(
+    path: web::Path<usize>,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    let index = path.into_inner();
+    match state.store_jsfx.remove_repo(index).await {
+        Ok(()) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": true})),
+        Err(e) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    }
+}
+
+/// POST /store/jsfx/repos/refresh
+#[post("/store/jsfx/repos/refresh")]
+pub async fn jsfx_repos_refresh(
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    match state.store_jsfx.refresh_cache().await {
+        Ok(()) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": true})),
+        Err(e) => HttpResponse::Ok()
+            .insert_header(("Cache-Control", "no-store"))
+            .json(json!({"ok": false, "error": e})),
+    }
 }
 
 fn copy_dir_recursive(src: &std::path::Path, dest: &std::path::Path) -> Result<(), String> {

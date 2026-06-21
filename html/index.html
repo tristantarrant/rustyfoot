@@ -197,6 +197,7 @@ $('document').ready(function() {
     }
     desktop.pedalboardBox.pedalboardBox('initViewMode', PREFERENCES['pb-view-mode'])
     tone3000.init()
+    jsfx.init()
 
     // Apply background preference
     if (PREFERENCES['background'] && PREFERENCES['background'] !== 'default') {
@@ -308,6 +309,7 @@ $('document').ready(function() {
 <script type="text/javascript" src="js/effects.js?v={{version}}"></script>
 <script type="text/javascript" src="js/cloudplugin.js?v={{version}}"></script>
 <script type="text/javascript" src="js/tone3000.js?v={{version}}"></script>
+<script type="text/javascript" src="js/jsfx.js?v={{version}}"></script>
 <script type="text/javascript" src="js/mididevices.js?v={{version}}"></script>
 <script type="text/javascript" src="js/snapshot.js?v={{version}}"></script>
 <script type="text/javascript" src="js/hardware.js?v={{version}}"></script>
@@ -831,6 +833,7 @@ $('document').ready(function() {
                 <select id="store-source-select" class="form-control" style="margin:5px 10px 10px;width:auto;max-width:calc(100% - 20px);box-sizing:border-box;">
                     <option value="patchstorage">LV2 Plugins</option>
                     <option value="tone3000">NAM Models &amp; IRs</option>
+                    <option value="jsfx">JSFX Effects</option>
                 </select>
 
                 <!-- Patchstorage filter options -->
@@ -880,6 +883,23 @@ $('document').ready(function() {
                         </div>
                     </div>
                 </div>
+
+                <!-- JSFX filter options -->
+                <div id="store-filter-jsfx" style="display:none;">
+                    <h2>Filter</h2>
+                    <ul class="categories list list-unstyled" id="jsfx-categories">
+                        <li id="jsfx-tab-All" class="selected">All</li>
+                    </ul>
+                    <div class="form-group">
+                        <input class="form-control" id="jsfx-search" placeholder="Search effects..." type="search" autocomplete="off"/>
+                    </div>
+                    <h2>Repositories</h2>
+                    <div id="jsfx-repos-list" style="padding:0 5px;font-size:12px;"></div>
+                    <div style="padding:5px 5px 10px;">
+                        <button id="jsfx-add-repo-btn" class="btn btn-mini" style="margin-right:5px;">Add Repo</button>
+                        <button id="jsfx-refresh-btn" class="btn btn-mini">Refresh</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Patchstorage results -->
@@ -898,6 +918,13 @@ $('document').ready(function() {
             <div id="store-panel-tone3000" class="store-panel" style="display:none;">
                 <div class="cloud-plugins clearfix" id="tone3000-results">
                     <div id="tone3000-content" style="width:100%;"></div>
+                </div>
+            </div>
+
+            <!-- JSFX results -->
+            <div id="store-panel-jsfx" class="store-panel" style="display:none;">
+                <div class="cloud-plugins clearfix" id="jsfx-results">
+                    <div id="jsfx-content" style="width:100%;"></div>
                 </div>
             </div>
 
